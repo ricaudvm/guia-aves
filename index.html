@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía de Campo · Mauricio Ricaud</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root {
+  --cream:#F8F5EF;--ink:#1C1B19;--ink-light:#6B6860;--ink-faint:#B8B5AE;
+  --border:#E2DDD5;--green:#3D6B2C;--green-light:#EAF0E5;--green-mid:#97C459;
+  --gold:#C49A2D;--panel:#FFFFFF;--radius:10px;--radius-lg:16px;--red:#8B2E2E;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh}
+
+/* HEADER */
+.site-header{background:var(--ink);color:var(--cream);padding:2rem 2.5rem 1.5rem;position:relative;overflow:hidden}
+.site-header::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 40px,rgba(255,255,255,0.015) 40px,rgba(255,255,255,0.015) 41px)}
+.header-inner{position:relative;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.header-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
+.header-title{font-family:'Playfair Display',serif;font-size:38px;font-weight:400;line-height:1;letter-spacing:-0.5px}
+.header-title em{font-style:italic;color:var(--gold)}
+.header-author{font-size:13px;color:var(--ink-faint);margin-top:5px}
+.header-sub{font-size:12px;color:var(--ink-faint);margin-top:3px}
+.header-stats{display:flex;gap:2rem}
+.hstat .n{font-family:'Playfair Display',serif;font-size:28px;color:var(--cream);line-height:1}
+.hstat .l{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);margin-top:2px}
+
+/* NAV */
+.nav-bar{background:var(--panel);border-bottom:1px solid var(--border);padding:0 2.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.nav-tabs{display:flex}
+.nav-tab{background:none;border:none;border-bottom:2px solid transparent;padding:14px 16px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--ink-light);cursor:pointer;transition:color .15s}
+.nav-tab.on{color:var(--ink);border-bottom-color:var(--ink)}
+.nav-actions{display:flex;gap:8px;align-items:center;padding:8px 0;flex-wrap:wrap}
+.search-box{border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--cream);color:var(--ink);width:200px;outline:none}
+.filter-select{border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--cream);color:var(--ink);cursor:pointer;outline:none}
+.btn-add{background:var(--green);color:white;border:none;border-radius:6px;padding:8px 18px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s}
+.btn-add:hover{background:#2e5020}
+.btn-ghost{background:none;border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--ink);cursor:pointer}
+
+/* MAIN */
+.main{padding:2rem 2.5rem;max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+
+/* CARD */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.08)}
+.card-img{width:100%;max-height:320px;object-fit:contain;display:block;background:var(--green-light)}
+.card-img-ph{width:100%;height:220px;background:var(--green-light);display:flex;align-items:center;justify-content:center}
+.card-body{padding:14px 16px 16px}
+.card-num{font-size:10px;letter-spacing:2px;color:var(--ink-faint);margin-bottom:5px}
+.card-es{font-family:'Playfair Display',serif;font-size:18px;font-weight:400;color:var(--ink);line-height:1.2}
+.card-en{font-size:12px;color:var(--ink-light);margin-top:2px}
+.card-sci{font-size:12px;font-style:italic;color:var(--ink-light);margin-top:1px;font-family:'Playfair Display',serif}
+.card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.tag{font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--border);color:var(--ink-light)}
+.tag.fam{background:var(--green-light);border-color:var(--green-mid);color:var(--green);font-weight:500}
+.card-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity .15s}
+.card:hover .card-actions{opacity:1}
+.card-btn{background:rgba(255,255,255,0.9);border:none;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;backdrop-filter:blur(4px)}
+.card-btn:hover{background:white}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:5rem 2rem;border:1.5px dashed var(--border);border-radius:var(--radius-lg);grid-column:1/-1;cursor:pointer;transition:background .15s}
+.empty-state:hover{background:var(--green-light)}
+.empty-icon{font-size:48px;margin-bottom:1rem}
+.empty-title{font-family:'Playfair Display',serif;font-size:22px;margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--ink-light);line-height:1.7}
+
+/* MAP */
+#map-el{height:500px;border-radius:var(--radius-lg);border:1px solid var(--border)}
+.map-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:1rem}
+.map-chip{font-size:11px;padding:5px 12px;border-radius:20px;background:var(--panel);border:1px solid var(--border);color:var(--ink-light);cursor:pointer;font-family:'DM Sans',sans-serif}
+.map-chip:hover{border-color:var(--green);color:var(--green)}
+
+/* OVERLAY */
+.overlay{display:none;position:fixed;inset:0;background:rgba(28,27,25,0.6);backdrop-filter:blur(4px);z-index:100;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.overlay.open{display:flex}
+.panel{background:var(--panel);border-radius:var(--radius-lg);width:100%;max-width:620px;box-shadow:0 24px 64px rgba(0,0,0,0.2);margin:auto}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border)}
+.panel-head h3{font-family:'Playfair Display',serif;font-size:18px;font-weight:400}
+.btn-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-light);line-height:1}
+.panel-body{padding:1.5rem}
+.panel-foot{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;align-items:center}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row.full{grid-template-columns:1fr}
+.field label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-light);display:block;margin-bottom:5px;font-weight:500}
+.field input,.field select{width:100%;border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background:var(--cream);outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--green)}
+
+/* PHOTO UPLOAD */
+.photo-upload-area{border:2px dashed var(--border);border-radius:var(--radius);padding:1rem;text-align:center;cursor:pointer;margin-bottom:1rem;transition:all .15s;position:relative}
+.photo-upload-area:hover{border-color:var(--green);background:var(--green-light)}
+.photo-upload-area img{max-height:260px;width:100%;object-fit:contain;border-radius:6px;display:block}
+.photo-upload-label{font-size:13px;color:var(--ink-light);padding:1rem 0}
+.photo-change-btn{position:absolute;bottom:8px;right:8px;background:rgba(255,255,255,0.9);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* AI badge */
+.ai-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 12px;border-radius:20px;background:var(--green-light);border:1px solid var(--green-mid);color:var(--green);margin-bottom:12px}
+.ai-loading{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-light);margin-bottom:12px;padding:6px 12px;background:var(--cream);border-radius:20px;border:1px solid var(--border)}
+.spin{width:12px;height:12px;border:2px solid var(--green-mid);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* BUTTONS */
+.btn-primary{background:var(--ink);color:var(--cream);border:none;border-radius:6px;padding:9px 22px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s}
+.btn-primary:hover{background:#333}
+.btn-secondary{background:none;border:1px solid var(--border);border-radius:6px;padding:9px 20px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);cursor:pointer}
+.btn-danger{background:none;border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--red);cursor:pointer;margin-right:auto}
+
+/* DETAIL */
+.detail-img{width:100%;max-height:70vh;object-fit:contain;display:block;border-radius:var(--radius);margin-bottom:1.25rem;background:var(--green-light)}
+.detail-img-ph{width:100%;height:200px;background:var(--green-light);display:flex;align-items:center;justify-content:center;border-radius:var(--radius);margin-bottom:1.25rem}
+.detail-es{font-family:'Playfair Display',serif;font-size:24px;font-weight:400}
+.detail-en{font-size:14px;color:var(--ink-light);margin-top:4px}
+.detail-sci{font-size:14px;font-style:italic;color:var(--ink-light);margin-top:2px;font-family:'Playfair Display',serif}
+.detail-sep{height:1px;background:var(--border);margin:1.25rem 0}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.detail-field label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);display:block;margin-bottom:4px}
+.detail-field span{font-size:14px;color:var(--ink)}
+.detail-notes{margin-top:1.25rem;font-size:13px;color:var(--ink-light);line-height:1.7;font-style:italic;border-left:2px solid var(--border);padding-left:14px;font-family:'Playfair Display',serif}
+
+/* SPINNER PAGE */
+.page-loading{text-align:center;padding:4rem;color:var(--ink-light);font-size:14px;grid-column:1/-1}
+.page-spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+
+/* DRAG REORDER */
+.card.dragging{opacity:0.4;border:2px dashed var(--green)}
+.card.drag-over{border:2px solid var(--green);transform:scale(1.02)}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div>
+      <div class="header-label">Registro personal · Aves fotografiadas</div>
+      <div class="header-title">Guía de <em>campo</em></div>
+      <div class="header-author">Mauricio Ricaud Velasco</div>
+      <div class="header-sub" id="hdr-sub">Cargando...</div>
+    </div>
+    <div class="header-stats">
+      <div class="hstat"><div class="n" id="s-total">—</div><div class="l">especies</div></div>
+      <div class="hstat"><div class="n" id="s-fam">—</div><div class="l">familias</div></div>
+      <div class="hstat"><div class="n" id="s-loc">—</div><div class="l">lugares</div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="nav-bar">
+  <div class="nav-tabs">
+    <button class="nav-tab on" onclick="tab('list')">Registros</button>
+    <button class="nav-tab" onclick="tab('map')">Mapa</button>
+  </div>
+  <div class="nav-actions">
+    <input type="text" class="search-box" placeholder="Buscar especie..." id="q" oninput="render()">
+    <select class="filter-select" id="fam-filter" onchange="render()"><option value="">Todas las familias</option></select>
+    <button class="btn-ghost" onclick="exportJSON()">↓ Exportar</button>
+    <button class="btn-ghost" onclick="document.getElementById('import-in').click()">↑ Importar</button>
+    <input type="file" id="import-in" accept=".json" style="display:none" onchange="importJSON(this)">
+    <button class="btn-add" onclick="openAddModal()">+ Agregar ave</button>
+  </div>
+</nav>
+
+<main class="main">
+  <div id="view-list"><div class="grid" id="grid-out"><div class="page-loading"><div class="page-spinner"></div>Cargando tu guía de campo...</div></div></div>
+  <div id="view-map" style="display:none"><div id="map-el"></div><div class="map-chips" id="map-chips"></div></div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="panel" id="panel"></div>
+</div>
+
+<input type="file" id="photo-file-in" accept="image/*" style="display:none" onchange="handlePhotoChange(this)">
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const STORE_KEY = 'guia_aves_v1';
+const JSON_URL = '/Desktop/aves_album.json';
+const PHOTO_BASE = '/Desktop/aves/';
+
+let birds = [];
+let leafMap = null;
+let editingId = null;
+let currentPhotoData = null; // base64 for new uploads
+let currentPhotoPath = null; // existing path
+let dragSrcIdx = null;
+
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function fmtDate(d){
+  if(!d)return'—';
+  try{const[y,m,day]=d.split('-');const ms=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];return`${parseInt(day)} ${ms[parseInt(m)-1]} ${y}`}catch(e){return d}
+}
+function buildPhotoUrl(b){
+  return b.photoPath?PHOTO_BASE+encodeURIComponent(b.photoPath.split('/').pop()):'';
+}
+
+// ── DATA ──────────────────────────────────────────
+async function loadData(){
+  try{
+    const resp=await fetch(JSON_URL);
+    if(!resp.ok)throw new Error();
+    const fromFile=await resp.json();
+    const stored=localStorage.getItem(STORE_KEY);
+    let edits={};
+    if(stored){try{JSON.parse(stored).forEach(b=>{edits[b.id]=b})}catch(e){}}
+    birds=fromFile.map(b=>{
+      const merged=edits[b.id]?{...b,...edits[b.id]}:b;
+      merged.photoUrl=buildPhotoUrl(b);
+      return merged;
+    });
+    render();
+  }catch(e){
+    document.getElementById('grid-out').innerHTML=`
+      <div class="empty-state" onclick="openAddModal()">
+        <div class="empty-icon">🦜</div>
+        <div class="empty-title">Tu guía de campo está vacía</div>
+        <div class="empty-sub">Haz clic en "+ Agregar ave" para comenzar</div>
+      </div>`;
+  }
+}
+
+function save(){
+  try{
+    const toStore=birds.map(b=>{const{photoUrl,...rest}=b;return rest});
+    localStorage.setItem(STORE_KEY,JSON.stringify(toStore));
+  }catch(e){}
+  // Also save to JSON file
+  const toStore=birds.map(b=>{const{photoUrl,...rest}=b;return rest});
+  fetch('/Desktop/aves_album.json',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(toStore,null,2)
+  }).catch(()=>{});
+}
+
+// ── RENDER ────────────────────────────────────────
+function render(){
+  const q=(document.getElementById('q').value||'').toLowerCase();
+  const fam=document.getElementById('fam-filter').value;
+  const families=[...new Set(birds.map(b=>b.family).filter(Boolean))].sort();
+  const sel=document.getElementById('fam-filter');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Todas las familias</option>';
+  families.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;if(f===cur)o.selected=true;sel.appendChild(o)});
+  const filt=birds.filter(b=>{
+    const txt=[b.nameEs,b.nameEn,b.nameSci,b.place,b.family].join(' ').toLowerCase();
+    return(!q||txt.includes(q))&&(!fam||b.family===fam);
+  });
+  document.getElementById('s-total').textContent=birds.length;
+  document.getElementById('s-fam').textContent=[...new Set(birds.map(b=>b.family).filter(Boolean))].length;
+  document.getElementById('s-loc').textContent=[...new Set(birds.map(b=>b.place).filter(Boolean))].length;
+  document.getElementById('hdr-sub').textContent=`${birds.length} especie${birds.length!==1?'s':''} registrada${birds.length!==1?'s':''}`;
+  const out=document.getElementById('grid-out');
+  if(!birds.length){
+    out.innerHTML=`<div class="empty-state" onclick="openAddModal()"><div class="empty-icon">🦜</div><div class="empty-title">Tu guía de campo está vacía</div><div class="empty-sub">Haz clic aquí o en "+ Agregar ave"</div></div>`;
+    return;
+  }
+  if(!filt.length){out.innerHTML='<div class="page-loading">Sin resultados</div>';return}
+  out.innerHTML=filt.map((b,i)=>`
+    <div class="card" draggable="true"
+      ondragstart="dragStart(event,'${b.id}')"
+      ondragover="dragOver(event)"
+      ondrop="dragDrop(event,'${b.id}')"
+      ondragend="dragEnd(event)">
+      <div class="card-actions">
+        <button class="card-btn" onclick="event.stopPropagation();openEditModal('${b.id}')">✏️ Editar</button>
+        <button class="card-btn" onclick="event.stopPropagation();changePhoto('${b.id}')">📷 Foto</button>
+      </div>
+      ${b.photoUrl
+        ?`<img class="card-img" src="${b.photoUrl}" alt="${esc(b.nameEs)}" onclick="openDetailModal('${b.id}')" style="cursor:zoom-in" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        :''}
+      <div class="card-img-ph" style="${b.photoUrl?'display:none':''}">
+        <svg width="60" height="60" viewBox="0 0 48 48" fill="none" opacity=".3"><ellipse cx="24" cy="20" rx="7" ry="6" fill="#3D6B2C"/><path d="M17 26 Q10 32 14 38 Q20 42 24 36 Q28 42 34 38 Q38 32 31 26 Q27 22 24 26 Q21 22 17 26Z" fill="#2e5020"/><circle cx="27" cy="18" r="1.5" fill="#1C1B19"/><path d="M24 20 L30 17 L28 21Z" fill="#C49A2D"/></svg>
+      </div>
+      <div class="card-body" onclick="openDetailModal('${b.id}')">
+        <div class="card-num">No. ${String(birds.findIndex(x=>x.id===b.id)+1).padStart(3,'0')}</div>
+        <div class="card-es">${esc(b.nameEs||'—')}</div>
+        <div class="card-en">${esc(b.nameEn||'')}</div>
+        <div class="card-sci">${esc(b.nameSci||'')}</div>
+        <div class="card-tags">
+          ${b.family?`<span class="tag fam">${esc(b.family)}</span>`:''}
+          ${b.date?`<span class="tag">${fmtDate(b.date)}</span>`:''}
+          ${b.place?`<span class="tag">${esc(b.place)}</span>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── DRAG & DROP REORDER ───────────────────────────
+function dragStart(e,id){dragSrcIdx=birds.findIndex(b=>b.id===id);e.currentTarget.classList.add('dragging')}
+function dragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over')}
+function dragDrop(e,id){
+  e.preventDefault();
+  const destIdx=birds.findIndex(b=>b.id===id);
+  if(dragSrcIdx===null||dragSrcIdx===destIdx)return;
+  const [moved]=birds.splice(dragSrcIdx,1);
+  birds.splice(destIdx,0,moved);
+  save();render();dragSrcIdx=null;
+}
+function dragEnd(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('.card').forEach(c=>c.classList.remove('drag-over'))}
+
+// ── PHOTO CHANGE ──────────────────────────────────
+let photoChangeId=null;
+function changePhoto(id){
+  photoChangeId=id;
+  document.getElementById('photo-file-in').click();
+}
+function handlePhotoChange(inp){
+  if(!inp.files[0])return;
+  const id=photoChangeId;
+  const file=inp.files[0];
+  // Compress and save to aves folder via server
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1200;
+      const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      const b64=c.toDataURL('image/jpeg',0.85);
+      const b=birds.find(x=>x.id===id);
+      if(!b)return;
+      // Save photo to aves folder
+      const fname=b.photoPath?b.photoPath.split('/').pop():id+'.jpeg';
+      const blob=dataURLtoBlob(b64);
+      fetch('/Desktop/aves/'+encodeURIComponent(fname),{method:'POST',body:blob})
+        .then(()=>{b.photoUrl=PHOTO_BASE+encodeURIComponent(fname);save();render()})
+        .catch(()=>{b.photoUrl=b64;save();render()});
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  inp.value='';
+}
+function dataURLtoBlob(dataurl){
+  const arr=dataurl.split(','),mime=arr[0].match(/:(.*?);/)[1];
+  const bstr=atob(arr[1]);let n=bstr.length;const u8arr=new Uint8Array(n);
+  while(n--)u8arr[n]=bstr.charCodeAt(n);
+  return new Blob([u8arr],{type:mime});
+}
+
+// ── ADD MODAL ─────────────────────────────────────
+function openAddModal(){
+  editingId=null;currentPhotoData=null;currentPhotoPath=null;
+  showFormPanel({nameEs:'',nameEn:'',nameSci:'',family:'',date:'',place:'',lat:'',lng:'',notes:'',photoUrl:''});
+}
+
+// ── EDIT MODAL ────────────────────────────────────
+function openEditModal(id){
+  const b=birds.find(x=>x.id===id);if(!b)return;
+  editingId=id;currentPhotoData=null;currentPhotoPath=b.photoPath||null;
+  showFormPanel(b);
+}
+
+function showFormPanel(b){
+  const isEdit=!!editingId;
+  const photoSrc=b.photoUrl||'';
+  openOverlay(`
+    <div class="panel-head">
+      <h3>${isEdit?'Editar registro':'Nueva ave'}</h3>
+      <button class="btn-close" onclick="closeOverlay()">×</button>
+    </div>
+    <div class="panel-body">
+      <div class="photo-upload-area" id="photo-drop" onclick="triggerPhotoInput()" ondragover="event.preventDefault()" ondrop="handlePhotoDrop(event)">
+        ${photoSrc
+          ?`<img id="form-photo-preview" src="${photoSrc}" onerror="this.style.display='none'"><button class="photo-change-btn" onclick="event.stopPropagation();triggerPhotoInput()">Cambiar foto</button>`
+          :`<div class="photo-upload-label">📷 Haz clic o arrastra una foto aquí</div>`}
+      </div>
+      <div id="ai-status"></div>
+      <div class="form-row">
+        <div class="field"><label>Nombre en español</label><input type="text" id="f-es" value="${esc(b.nameEs||'')}" placeholder="Chara verde"></div>
+        <div class="field"><label>Nombre en inglés</label><input type="text" id="f-en" value="${esc(b.nameEn||'')}" placeholder="Green Jay"></div>
+      </div>
+      <div class="form-row full"><div class="field"><label>Nombre científico</label><input type="text" id="f-sci" value="${esc(b.nameSci||'')}" placeholder="Cyanocorax yncas"></div></div>
+      <div class="form-row">
+        <div class="field"><label>Familia</label><input type="text" id="f-fam" value="${esc(b.family||'')}" placeholder="Corvidae"></div>
+        <div class="field"><label>Fecha</label><input type="date" id="f-date" value="${b.date||''}"></div>
+      </div>
+      <div class="form-row full"><div class="field"><label>Lugar</label><input type="text" id="f-place" value="${esc(b.place||'')}" placeholder="Tulum, Quintana Roo"></div></div>
+      <div class="form-row">
+        <div class="field"><label>Latitud</label><input type="number" id="f-lat" value="${b.lat||''}" step="any" placeholder="20.588"></div>
+        <div class="field"><label>Longitud</label><input type="number" id="f-lng" value="${b.lng||''}" step="any" placeholder="-100.389"></div>
+      </div>
+      <div class="form-row full"><div class="field"><label>Notas</label><input type="text" id="f-notes" value="${esc(b.notes||'')}" placeholder="Comportamiento, plumaje, condiciones..."></div></div>
+    </div>
+    <div class="panel-foot">
+      ${isEdit?`<button class="btn-danger" onclick="deleteEntry()">Eliminar</button>`:''}
+      <button class="btn-secondary" onclick="closeOverlay()">Cancelar</button>
+      <button class="btn-primary" onclick="saveForm()">Guardar</button>
+    </div>`);
+}
+
+// Photo input inside form
+function triggerPhotoInput(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';
+  inp.onchange=e=>handleFormPhoto(e.target.files[0]);
+  inp.click();
+}
+function handlePhotoDrop(e){
+  e.preventDefault();
+  const file=e.dataTransfer.files[0];
+  if(file&&file.type.startsWith('image/'))handleFormPhoto(file);
+}
+function handleFormPhoto(file){
+  if(!file)return;
+  const status=document.getElementById('ai-status');
+  status.innerHTML='<div class="ai-loading"><span class="spin"></span> Leyendo foto e identificando especie...</div>';
+  // Read EXIF
+  readExif(file).then(exif=>{
+    if(exif.date&&!document.getElementById('f-date').value)document.getElementById('f-date').value=exif.date;
+    if(exif.lat&&!document.getElementById('f-lat').value)document.getElementById('f-lat').value=exif.lat;
+    if(exif.lng&&!document.getElementById('f-lng').value)document.getElementById('f-lng').value=exif.lng;
+  });
+  // Compress and preview
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1200;
+      const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      currentPhotoData=c.toDataURL('image/jpeg',0.85);
+      const drop=document.getElementById('photo-drop');
+      if(drop)drop.innerHTML=`<img id="form-photo-preview" src="${currentPhotoData}"><button class="photo-change-btn" onclick="event.stopPropagation();triggerPhotoInput()">Cambiar foto</button>`;
+      // Identify species via API
+      identifyBird(currentPhotoData).then(species=>{
+        if(species&&species.nameEs){
+          if(!document.getElementById('f-es').value)document.getElementById('f-es').value=species.nameEs;
+          if(!document.getElementById('f-en').value)document.getElementById('f-en').value=species.nameEn;
+          if(!document.getElementById('f-sci').value)document.getElementById('f-sci').value=species.nameSci;
+          if(!document.getElementById('f-fam').value)document.getElementById('f-fam').value=species.family;
+          if(status)status.innerHTML='<div class="ai-badge">✦ Especie identificada automáticamente — confirma o corrige</div>';
+        }else{
+          if(status)status.innerHTML='';
+        }
+      });
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function identifyBird(b64){
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:300,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64.split(',')[1]}},
+          {type:'text',text:'What bird species is in this photo? Reply ONLY with a JSON object (no markdown): {"nameEs":"nombre en español","nameEn":"English name","nameSci":"scientific name","family":"taxonomic family"}. If no bird, use empty strings.'}
+        ]}]
+      })
+    });
+    const data=await resp.json();
+    const txt=(data.content||[]).map(c=>c.text||'').join('').trim();
+    return JSON.parse(txt.replace(/```[a-z]*\n?|\n?```/g,'').trim());
+  }catch(e){return null}
+}
+
+function saveForm(){
+  const nameEs=(document.getElementById('f-es')||{}).value?.trim()||'';
+  const nameSci=(document.getElementById('f-sci')||{}).value?.trim()||'';
+  if(!nameEs&&!nameSci){alert('Ingresa al menos nombre en español o científico');return}
+  const isEdit=!!editingId;
+  const id=editingId||Date.now().toString();
+  const entry={
+    id,
+    nameEs,nameEn:document.getElementById('f-en').value.trim(),
+    nameSci,family:document.getElementById('f-fam').value.trim(),
+    date:document.getElementById('f-date').value,
+    place:document.getElementById('f-place').value.trim(),
+    lat:parseFloat(document.getElementById('f-lat').value)||null,
+    lng:parseFloat(document.getElementById('f-lng').value)||null,
+    notes:document.getElementById('f-notes').value.trim(),
+    photoPath:currentPhotoPath||null,
+    photoUrl:''
+  };
+  // If new photo uploaded, save it
+  if(currentPhotoData){
+    const fname=nameEs?nameEs.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s,\.]/g,'').trim()+'.jpeg':id+'.jpeg';
+    entry.photoPath='/Users/MauricioRicaud/Desktop/aves/'+fname;
+    entry.photoUrl=PHOTO_BASE+encodeURIComponent(fname);
+    const blob=dataURLtoBlob(currentPhotoData);
+    fetch('/Desktop/aves/'+encodeURIComponent(fname),{method:'POST',body:blob}).catch(()=>{});
+  }else if(currentPhotoPath){
+    entry.photoUrl=buildPhotoUrl(entry);
+  }
+  if(isEdit){const i=birds.findIndex(x=>x.id===id);if(i>=0)birds[i]=entry}
+  else birds.unshift(entry);
+  save();closeOverlay();render();
+}
+
+function deleteEntry(){
+  if(!editingId||!confirm('¿Eliminar este registro?'))return;
+  birds=birds.filter(x=>x.id!==editingId);
+  save();closeOverlay();render();
+}
+
+// ── DETAIL MODAL ──────────────────────────────────
+function openDetailModal(id){
+  const b=birds.find(x=>x.id===id);if(!b)return;
+  openOverlay(`
+    <div class="panel-head"><h3>Ficha de especie</h3><button class="btn-close" onclick="closeOverlay()">×</button></div>
+    <div class="panel-body">
+      ${b.photoUrl
+        ?`<img class="detail-img" src="${b.photoUrl}" onerror="this.style.display='none'">`
+        :`<div class="detail-img-ph"><svg width="72" height="72" viewBox="0 0 48 48" fill="none" opacity=".3"><ellipse cx="24" cy="20" rx="7" ry="6" fill="#3D6B2C"/><path d="M17 26 Q10 32 14 38 Q20 42 24 36 Q28 42 34 38 Q38 32 31 26 Q27 22 24 26 Q21 22 17 26Z" fill="#2e5020"/></svg></div>`}
+      <div class="detail-es">${esc(b.nameEs||'—')}</div>
+      <div class="detail-en">${esc(b.nameEn||'')}</div>
+      <div class="detail-sci">${esc(b.nameSci||'')}</div>
+      <div class="detail-sep"></div>
+      <div class="detail-grid">
+        <div class="detail-field"><label>Familia</label><span>${esc(b.family||'—')}</span></div>
+        <div class="detail-field"><label>Fecha</label><span>${fmtDate(b.date)}</span></div>
+        <div class="detail-field"><label>Lugar</label><span>${esc(b.place||'—')}</span></div>
+        <div class="detail-field"><label>Coordenadas</label><span>${(b.lat&&b.lng)?`${b.lat}, ${b.lng}`:'—'}</span></div>
+      </div>
+      ${b.notes?`<div class="detail-notes">${esc(b.notes)}</div>`:''}
+    </div>
+    <div class="panel-foot">
+      <button class="btn-secondary" onclick="closeOverlay()">Cerrar</button>
+      <button class="btn-primary" onclick="closeOverlay();openEditModal('${b.id}')">Editar</button>
+    </div>`);
+}
+
+// ── OVERLAY ───────────────────────────────────────
+function openOverlay(html){
+  document.getElementById('panel').innerHTML=html;
+  document.getElementById('overlay').classList.add('open');
+}
+function closeOverlay(){
+  document.getElementById('overlay').classList.remove('open');
+  editingId=null;currentPhotoData=null;
+}
+document.getElementById('overlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('overlay'))closeOverlay();
+});
+
+// ── EXPORT / IMPORT ───────────────────────────────
+function exportJSON(){
+  if(!birds.length){alert('No hay registros.');return}
+  const blob=new Blob([JSON.stringify(birds.map(b=>{const{photoUrl,...r}=b;return r}),null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`guia_aves_${new Date().toISOString().slice(0,10)}.json`;a.click();
+}
+function importJSON(inp){
+  const file=inp.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!Array.isArray(data))throw new Error();
+      if(!confirm(`¿Importar ${data.length} registros? Reemplazará el álbum actual.`))return;
+      birds=data.map(b=>({...b,photoUrl:buildPhotoUrl(b)}));
+      save();render();alert(`✅ ${data.length} registros importados.`);
+    }catch(e){alert('❌ Archivo no válido.')}
+  };
+  r.readAsText(file);inp.value='';
+}
+
+// ── TAB ───────────────────────────────────────────
+function tab(t){
+  document.querySelectorAll('.nav-tab').forEach((b,i)=>b.classList.toggle('on',(i===0&&t==='list')||(i===1&&t==='map')));
+  document.getElementById('view-list').style.display=t==='list'?'block':'none';
+  document.getElementById('view-map').style.display=t==='map'?'block':'none';
+  if(t==='map')renderMap();
+}
+
+// ── MAP ───────────────────────────────────────────
+function renderMap(){
+  const pts=birds.filter(b=>b.lat&&b.lng);
+  const el=document.getElementById('map-el');
+  if(!pts.length){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink-light);font-size:14px">Agrega coordenadas a tus registros para ver el mapa</div>';return}
+  if(!leafMap){leafMap=L.map('map-el');L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(leafMap)}
+  leafMap.eachLayer(l=>{if(l instanceof L.Marker)leafMap.removeLayer(l)});
+  const bounds=[];
+  pts.forEach(b=>{
+    L.marker([b.lat,b.lng]).addTo(leafMap).bindPopup(`<strong>${esc(b.nameEs||b.nameSci)}</strong><br><em style="font-size:11px">${esc(b.nameSci)}</em><br><span style="font-size:11px">${esc(b.place||'')}</span>`);
+    bounds.push([b.lat,b.lng]);
+  });
+  leafMap.fitBounds(bounds,{padding:[40,40]});
+  document.getElementById('map-chips').innerHTML=pts.map(b=>`<div class="map-chip" onclick="if(leafMap)leafMap.flyTo([${b.lat},${b.lng}],13)">${esc(b.nameEs||b.nameSci)}</div>`).join('');
+}
+
+// ── EXIF ──────────────────────────────────────────
+function readExif(file){
+  return new Promise(resolve=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const buf=e.target.result,view=new DataView(buf);
+      const res={date:null,lat:null,lng:null};
+      try{
+        if(view.getUint16(0)!==0xFFD8){resolve(res);return}
+        let off=2;
+        while(off<buf.byteLength-4){
+          const marker=view.getUint16(off);
+          const segLen=view.getUint16(off+2);
+          if(marker===0xFFE1){
+            const hdr=String.fromCharCode(...new Uint8Array(buf,off+4,6));
+            if(hdr.startsWith('Exif')){
+              const tB=off+10;const le=view.getUint16(tB)===0x4949;
+              const ru16=o=>view.getUint16(tB+o,le);const ru32=o=>view.getUint32(tB+o,le);
+              const rRat=o=>{const n=ru32(o),d=ru32(o+4);return d?n/d:0};
+              const rStr=(o,l)=>{let s='';for(let i=0;i<l;i++){if(tB+o+i>=buf.byteLength)break;const c=view.getUint8(tB+o+i);if(!c)break;s+=String.fromCharCode(c)}return s.trim()};
+              const ifd0=ru32(4),n0=ru16(ifd0);let gpsOff=null,exifOff=null;
+              for(let i=0;i<n0;i++){const b=ifd0+2+i*12;const tag=ru16(b);if(tag===0x8825)gpsOff=ru32(b+8);if(tag===0x8769)exifOff=ru32(b+8)}
+              if(exifOff){const ne=ru16(exifOff);for(let i=0;i<ne;i++){const b=exifOff+2+i*12;if(ru16(b)===0x9003){const cnt=ru32(b+4);const vo=cnt>4?ru32(b+8):b+8;const ds=rStr(vo,20);if(ds&&ds.length>=10)res.date=ds.substring(0,10).replace(/:/g,'-')}}}
+              if(!res.date){for(let i=0;i<n0;i++){const b=ifd0+2+i*12;if(ru16(b)===0x0132){const cnt=ru32(b+4);const vo=cnt>4?ru32(b+8):b+8;const ds=rStr(vo,20);if(ds&&ds.length>=10)res.date=ds.substring(0,10).replace(/:/g,'-')}}}
+              if(gpsOff){const ng=ru16(gpsOff);let lD,lM,lS,lR,oD,oM,oS,oR;
+                for(let i=0;i<ng;i++){const b=gpsOff+2+i*12;const tag=ru16(b);const vo=ru32(b+8);
+                  if(tag===1)lR=rStr(b+8,2);if(tag===3)oR=rStr(b+8,2);
+                  if(tag===2){lD=rRat(vo);lM=rRat(vo+8);lS=rRat(vo+16)}
+                  if(tag===4){oD=rRat(vo);oM=rRat(vo+8);oS=rRat(vo+16)}}
+                if(lD!==undefined&&oD!==undefined){
+                  const lat=lD+(lM||0)/60+(lS||0)/3600;const lng=oD+(oM||0)/60+(oS||0)/3600;
+                  res.lat=parseFloat(((lR||'N')==='S'?-lat:lat).toFixed(6));
+                  res.lng=parseFloat(((oR||'E')==='W'?-lng:lng).toFixed(6));
+                }}
+            }
+            break;
+          }
+          if((marker&0xFF00)!==0xFF00)break;
+          off+=2+segLen;
+        }
+      }catch(e){}
+      resolve(res);
+    };
+    r.onerror=()=>resolve({date:null,lat:null,lng:null});
+    r.readAsArrayBuffer(file);
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
