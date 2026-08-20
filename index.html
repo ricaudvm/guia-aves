@@ -161,6 +161,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
     <button class="btn-ghost" onclick="exportJSON()">↓ Exportar</button>
     <button class="btn-ghost" onclick="document.getElementById('import-in').click()">↑ Importar</button>
     <input type="file" id="import-in" accept=".json" style="display:none" onchange="importJSON(this)">
+    <button class="btn-ghost" onclick="openApiKeySettings()">🔑 API key</button>
     <button class="btn-add" onclick="openAddModal()">+ Agregar ave</button>
   </div>
 </nav>
@@ -172,6 +173,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 
 <div class="overlay" id="overlay">
   <div class="panel" id="panel"></div>
+</div>
+
+<!-- Overlay propio: se apila sobre el formulario para no destruirlo -->
+<div class="overlay" id="key-overlay" style="z-index:200">
+  <div class="panel" id="key-panel" style="max-width:460px"></div>
 </div>
 
 <input type="file" id="photo-file-in" accept="image/*" style="display:none" onchange="handlePhotoChange(this)">
@@ -188,6 +194,22 @@ let editingId = null;
 let currentPhotoData = null; // base64 for new uploads
 let currentPhotoPath = null; // existing path
 let dragSrcIdx = null;
+let pendingEntry = null; // entry en espera de confirmacion por posible duplicado
+
+// ── API KEY (bring-your-own-key) ─────────────────
+// La key vive SOLO en el localStorage de este navegador. Nunca se escribe en
+// index.html ni en aves_album.json: el repo y el sitio son publicos.
+const AI_KEY_STORE = 'guia_aves_claude_key';
+function getApiKey(){
+  try{return localStorage.getItem(AI_KEY_STORE)||''}catch(e){return ''}
+}
+function setApiKey(key){
+  const val=(key||'').trim();
+  try{
+    if(val)localStorage.setItem(AI_KEY_STORE,val);
+    else localStorage.removeItem(AI_KEY_STORE);
+  }catch(e){}
+}
 
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 function fmtDate(d){
@@ -440,7 +462,8 @@ function handleFormPhoto(file){
           if(!document.getElementById('f-fam').value)document.getElementById('f-fam').value=species.family;
           if(status)status.innerHTML='<div class="ai-badge">✦ Especie identificada automáticamente — confirma o corrige</div>';
         }else{
-          if(status)status.innerHTML='';
+          // Solo limpiamos si sigue el spinner: identifyBird pudo dejar un mensaje de error.
+          if(status&&status.querySelector('.spin'))status.innerHTML='';
         }
       });
     };
@@ -449,13 +472,34 @@ function handleFormPhoto(file){
   reader.readAsDataURL(file);
 }
 
+function setAiStatus(html){
+  const el=document.getElementById('ai-status');
+  if(el)el.innerHTML=html;
+}
+
 async function identifyBird(b64){
+  const key=getApiKey();
+  // Primer uso: pedimos la key en un modal. Cancelar salta la IA solo para esta subida.
+  if(!key){
+    return new Promise(resolve=>{
+      showApiKeyModal(
+        ()=>{identifyBird(b64).then(resolve)},
+        ()=>{setAiStatus('');resolve(null)}
+      );
+    });
+  }
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'content-type':'application/json',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        // 'claude-haiku-4-5-20251001' es una alternativa mas barata por foto.
+        model:'claude-sonnet-5',
         max_tokens:300,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64.split(',')[1]}},
@@ -463,10 +507,160 @@ async function identifyBird(b64){
         ]}]
       })
     });
+    if(resp.status===401){
+      setAiStatus('<div class="ai-loading">❌ No se pudo identificar — revisa tu API key</div>');
+      return null;
+    }
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
     const data=await resp.json();
     const txt=(data.content||[]).map(c=>c.text||'').join('').trim();
     return JSON.parse(txt.replace(/```[a-z]*\n?|\n?```/g,'').trim());
-  }catch(e){return null}
+  }catch(e){
+    setAiStatus('<div class="ai-loading">❌ No se pudo identificar automáticamente. Llena el formulario manualmente.</div>');
+    return null;
+  }
+}
+
+// ── MODAL DE API KEY ────────────────────────────
+let keyModalOnSave=null,keyModalOnCancel=null;
+function showApiKeyModal(onSave,onCancel){
+  keyModalOnSave=onSave||null;keyModalOnCancel=onCancel||null;
+  const hasKey=!!getApiKey(); // solo sabemos SI hay una, nunca la mostramos
+  document.getElementById('key-panel').innerHTML=`
+    <div class="panel-head">
+      <h3>🔑 API key de Anthropic</h3>
+      <button class="btn-close" onclick="cancelApiKeyModal()">×</button>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:13px;color:var(--ink-light);line-height:1.7;margin-bottom:1rem">
+        Para identificar especies automáticamente, pega tu API key de Anthropic (console.anthropic.com).
+        Se guarda solo en este navegador — nunca se sube a GitHub.
+      </p>
+      <div class="form-row full">
+        <div class="field">
+          <label>API key</label>
+          <input type="password" id="api-key-in" placeholder="sk-ant-..." autocomplete="off" onkeydown="if(event.key==='Enter')saveApiKeyFromModal()">
+        </div>
+      </div>
+      ${hasKey?`<p style="font-size:12px;color:var(--ink-faint);margin-top:8px">Ya hay una key guardada en este navegador. Escribe una nueva para reemplazarla.</p>`:''}
+    </div>
+    <div class="panel-foot">
+      ${hasKey?`<button class="btn-danger" onclick="clearApiKey()">Borrar key guardada</button>`:''}
+      <button class="btn-secondary" onclick="cancelApiKeyModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveApiKeyFromModal()">Guardar</button>
+    </div>`;
+  document.getElementById('key-overlay').classList.add('open');
+  const inp=document.getElementById('api-key-in');
+  if(inp)inp.focus();
+}
+function closeApiKeyModal(){
+  document.getElementById('key-overlay').classList.remove('open');
+  document.getElementById('key-panel').innerHTML=''; // saca la key escrita del DOM
+  keyModalOnSave=null;keyModalOnCancel=null;
+}
+function saveApiKeyFromModal(){
+  const inp=document.getElementById('api-key-in');
+  const val=inp?inp.value.trim():'';
+  if(!val){if(inp)inp.focus();return}
+  setApiKey(val);
+  const cb=keyModalOnSave;
+  closeApiKeyModal();
+  if(cb)cb();
+}
+function cancelApiKeyModal(){
+  const cb=keyModalOnCancel;
+  closeApiKeyModal();
+  if(cb)cb();
+}
+function clearApiKey(){
+  setApiKey('');
+  const cb=keyModalOnCancel;
+  closeApiKeyModal();
+  if(cb)cb();
+}
+function openApiKeySettings(){
+  showApiKeyModal(null,null);
+}
+document.getElementById('key-overlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('key-overlay'))cancelApiKeyModal();
+});
+
+// ── DUPLICADOS ──────────────────────────────
+// Distancia de edicion clasica entre dos cadenas (minusculas, sin espacios extra).
+function levenshtein(a,b){
+  a=(a||'').toLowerCase().trim();b=(b||'').toLowerCase().trim();
+  if(a===b)return 0;
+  if(!a.length)return b.length;
+  if(!b.length)return a.length;
+  let prev=new Array(b.length+1);
+  for(let j=0;j<=b.length;j++)prev[j]=j;
+  for(let i=1;i<=a.length;i++){
+    const cur=[i];
+    for(let j=1;j<=b.length;j++){
+      const cost=a[i-1]===b[j-1]?0:1;
+      cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+cost);
+    }
+    prev=cur;
+  }
+  return prev[b.length];
+}
+function isSimilar(a,b){
+  const x=(a||'').toLowerCase().trim(),y=(b||'').toLowerCase().trim();
+  if(!x||!y)return false;          // un nombre vacio nunca cuenta como coincidencia
+  if(x===y)return true;
+  if(Math.abs(x.length-y.length)>4)return false;
+  return levenshtein(x,y)<=2;
+}
+function findDuplicates(entry,excludeId){
+  return birds.filter(b=>{
+    if(excludeId&&b.id===excludeId)return false;
+    return isSimilar(b.nameSci,entry.nameSci)||isSimilar(b.nameEs,entry.nameEs);
+  });
+}
+function showDuplicateWarning(entry,dups){
+  const rows=dups.map(d=>`
+      <div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+        ${d.photoUrl?`<img src="${d.photoUrl}" alt="${esc(d.nameEs||'')}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;background:var(--green-light);flex:none" onerror="this.style.display='none'">`:''}
+        <div style="min-width:0">
+          <div class="card-es">${esc(d.nameEs||'—')}</div>
+          <div class="card-sci">${esc(d.nameSci||'')}</div>
+          <div class="card-tags">
+            ${d.date?`<span class="tag">${fmtDate(d.date)}</span>`:''}
+            ${d.place?`<span class="tag">${esc(d.place)}</span>`:''}
+          </div>
+        </div>
+      </div>`).join('');
+  openOverlay(`
+    <div class="panel-head">
+      <h3>⚠️ Posible duplicado</h3>
+      <button class="btn-close" onclick="cancelDuplicateWarning()">×</button>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:13px;color:var(--ink-light);line-height:1.7;margin-bottom:4px">
+        Ya tienes ${dups.length===1?'un registro parecido':`${dups.length} registros parecidos`} a <strong>${esc(entry.nameEs||entry.nameSci)}</strong>:
+      </p>
+      ${rows}
+      <p style="font-size:13px;color:var(--ink-light);line-height:1.7;margin-top:1rem">
+        Si es un avistamiento distinto (otra fecha o lugar), puedes agregarlo de todas formas.
+      </p>
+    </div>
+    <div class="panel-foot">
+      <button class="btn-secondary" onclick="cancelDuplicateWarning()">Revisar antes de guardar</button>
+      <button class="btn-primary" onclick="confirmDuplicateSave()">Agregar de todas formas</button>
+    </div>`);
+}
+function cancelDuplicateWarning(){
+  const e=pendingEntry;
+  pendingEntry=null;
+  if(!e){closeOverlay();return}
+  // Reabrimos el formulario intacto, incluida la foto en proceso (currentPhotoData).
+  showFormPanel({...e,photoUrl:currentPhotoData||e.photoUrl||''});
+}
+function confirmDuplicateSave(){
+  const e=pendingEntry;
+  pendingEntry=null;
+  if(!e)return;
+  finalizeSave(e,false,e.id);
 }
 
 function saveForm(){
@@ -487,9 +681,19 @@ function saveForm(){
     photoPath:currentPhotoPath||null,
     photoUrl:''
   };
+  // Aviso informativo de duplicados: solo al agregar especies nuevas, nunca al editar.
+  if(!isEdit){
+    const dups=findDuplicates(entry);
+    if(dups.length){pendingEntry=entry;showDuplicateWarning(entry,dups);return}
+  }
+  finalizeSave(entry,isEdit,id);
+}
+
+// Guardado final: foto + insercion en birds + persistencia.
+function finalizeSave(entry,isEdit,id){
   // If new photo uploaded, save it
   if(currentPhotoData){
-    const fname=nameEs?nameEs.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s,\.]/g,'').trim()+'.jpeg':id+'.jpeg';
+    const fname=entry.nameEs?entry.nameEs.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s,\.]/g,'').trim()+'.jpeg':id+'.jpeg';
     entry.photoPath='/Users/MauricioRicaud/Desktop/aves/'+fname;
     entry.photoUrl=PHOTO_BASE+encodeURIComponent(fname);
     const blob=dataURLtoBlob(currentPhotoData);
@@ -542,7 +746,7 @@ function openOverlay(html){
 }
 function closeOverlay(){
   document.getElementById('overlay').classList.remove('open');
-  editingId=null;currentPhotoData=null;
+  editingId=null;currentPhotoData=null;pendingEntry=null;
 }
 document.getElementById('overlay').addEventListener('click',e=>{
   if(e.target===document.getElementById('overlay'))closeOverlay();
