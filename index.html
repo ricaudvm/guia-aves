@@ -57,10 +57,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
 .tag{font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--border);color:var(--ink-light)}
 .tag.fam{background:var(--green-light);border-color:var(--green-mid);color:var(--green);font-weight:500}
-.card-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity .15s}
-.card:hover .card-actions{opacity:1}
-.card-btn{background:rgba(255,255,255,0.9);border:none;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;backdrop-filter:blur(4px)}
-.card-btn:hover{background:white}
 
 /* EMPTY */
 .empty-state{text-align:center;padding:5rem 2rem;border:1.5px dashed var(--border);border-radius:var(--radius-lg);grid-column:1/-1;cursor:pointer;transition:background .15s}
@@ -100,7 +96,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .photo-change-btn{position:absolute;bottom:8px;right:8px;background:rgba(255,255,255,0.9);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
 
 /* AI badge */
-.ai-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 12px;border-radius:20px;background:var(--green-light);border:1px solid var(--green-mid);color:var(--green);margin-bottom:12px}
 .ai-loading{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-light);margin-bottom:12px;padding:6px 12px;background:var(--cream);border-radius:20px;border:1px solid var(--border)}
 .spin{width:12px;height:12px;border:2px solid var(--green-mid);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -158,11 +153,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
   <div class="nav-actions">
     <input type="text" class="search-box" placeholder="Buscar especie..." id="q" oninput="render()">
     <select class="filter-select" id="fam-filter" onchange="render()"><option value="">Todas las familias</option></select>
-    <button class="btn-ghost" onclick="exportJSON()">↓ Exportar</button>
-    <button class="btn-ghost" onclick="document.getElementById('import-in').click()">↑ Importar</button>
-    <input type="file" id="import-in" accept=".json" style="display:none" onchange="importJSON(this)">
-    <button class="btn-ghost" onclick="openApiKeySettings()">🔑 API key</button>
-    <button class="btn-add" onclick="openAddModal()">+ Agregar ave</button>
+    <span id="lock-indicator" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--ink-light)">🔓 Edición activa · <a href="#" onclick="lockAgain();return false" style="color:var(--ink-light)">Bloquear</a></span>
+    <button class="btn-add" onclick="requestUnlock(openAddModal)">+ Agregar ave</button>
   </div>
 </nav>
 
@@ -174,13 +166,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 <div class="overlay" id="overlay">
   <div class="panel" id="panel"></div>
 </div>
-
-<!-- Overlay propio: se apila sobre el formulario para no destruirlo -->
-<div class="overlay" id="key-overlay" style="z-index:200">
-  <div class="panel" id="key-panel" style="max-width:460px"></div>
-</div>
-
-<input type="file" id="photo-file-in" accept="image/*" style="display:none" onchange="handlePhotoChange(this)">
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -196,19 +181,34 @@ let currentPhotoPath = null; // existing path
 let dragSrcIdx = null;
 let pendingEntry = null; // entry en espera de confirmacion por posible duplicado
 
-// ── API KEY (bring-your-own-key) ─────────────────
-// La key vive SOLO en el localStorage de este navegador. Nunca se escribe en
-// index.html ni en aves_album.json: el repo y el sitio son publicos.
-const AI_KEY_STORE = 'guia_aves_claude_key';
-function getApiKey(){
-  try{return localStorage.getItem(AI_KEY_STORE)||''}catch(e){return ''}
+// ── CANDADO DE EDICION ───────────────────────────
+const ADMIN_PASSWORD = 'Motmot';
+const ADMIN_STORE = 'guia_aves_unlocked';
+// Candado simple pensado para evitar ediciones accidentales o de curiosos.
+// No es seguridad real: cualquiera que revise el código fuente de la página
+// puede ver la contraseña. Suficiente para compartir con familia/amigos de confianza.
+function isUnlocked(){
+  try{return localStorage.getItem(ADMIN_STORE)==='1'}catch(e){return false}
 }
-function setApiKey(key){
-  const val=(key||'').trim();
-  try{
-    if(val)localStorage.setItem(AI_KEY_STORE,val);
-    else localStorage.removeItem(AI_KEY_STORE);
-  }catch(e){}
+function requestUnlock(callback){
+  if(isUnlocked()){callback();return}
+  const pwd=prompt('Escribe la contraseña para editar la guía:');
+  if(pwd===null)return; // cancelado
+  if(pwd===ADMIN_PASSWORD){
+    try{localStorage.setItem(ADMIN_STORE,'1')}catch(e){}
+    updateAdminUI();
+    callback();
+  }else{
+    alert('❌ Contraseña incorrecta.');
+  }
+}
+function lockAgain(){
+  try{localStorage.removeItem(ADMIN_STORE)}catch(e){}
+  updateAdminUI();
+}
+function updateAdminUI(){
+  const el=document.getElementById('lock-indicator');
+  if(el)el.style.display=isUnlocked()?'inline-flex':'none';
 }
 
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
@@ -237,7 +237,7 @@ async function loadData(){
     render();
   }catch(e){
     document.getElementById('grid-out').innerHTML=`
-      <div class="empty-state" onclick="openAddModal()">
+      <div class="empty-state" onclick="requestUnlock(openAddModal)">
         <div class="empty-icon">🦜</div>
         <div class="empty-title">Tu guía de campo está vacía</div>
         <div class="empty-sub">Haz clic en "+ Agregar ave" para comenzar</div>
@@ -278,7 +278,7 @@ function render(){
   document.getElementById('hdr-sub').textContent=`${birds.length} especie${birds.length!==1?'s':''} registrada${birds.length!==1?'s':''}`;
   const out=document.getElementById('grid-out');
   if(!birds.length){
-    out.innerHTML=`<div class="empty-state" onclick="openAddModal()"><div class="empty-icon">🦜</div><div class="empty-title">Tu guía de campo está vacía</div><div class="empty-sub">Haz clic aquí o en "+ Agregar ave"</div></div>`;
+    out.innerHTML=`<div class="empty-state" onclick="requestUnlock(openAddModal)"><div class="empty-icon">🦜</div><div class="empty-title">Tu guía de campo está vacía</div><div class="empty-sub">Haz clic aquí o en "+ Agregar ave"</div></div>`;
     return;
   }
   if(!filt.length){out.innerHTML='<div class="page-loading">Sin resultados</div>';return}
@@ -288,10 +288,6 @@ function render(){
       ondragover="dragOver(event)"
       ondrop="dragDrop(event,'${b.id}')"
       ondragend="dragEnd(event)">
-      <div class="card-actions">
-        <button class="card-btn" onclick="event.stopPropagation();openEditModal('${b.id}')">✏️ Editar</button>
-        <button class="card-btn" onclick="event.stopPropagation();changePhoto('${b.id}')">📷 Foto</button>
-      </div>
       ${b.photoUrl
         ?`<img class="card-img" src="${b.photoUrl}" alt="${esc(b.nameEs)}" onclick="openDetailModal('${b.id}')" style="cursor:zoom-in" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
         :''}
@@ -325,41 +321,6 @@ function dragDrop(e,id){
 }
 function dragEnd(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('.card').forEach(c=>c.classList.remove('drag-over'))}
 
-// ── PHOTO CHANGE ──────────────────────────────────
-let photoChangeId=null;
-function changePhoto(id){
-  photoChangeId=id;
-  document.getElementById('photo-file-in').click();
-}
-function handlePhotoChange(inp){
-  if(!inp.files[0])return;
-  const id=photoChangeId;
-  const file=inp.files[0];
-  // Compress and save to aves folder via server
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const img=new Image();
-    img.onload=()=>{
-      const MAX=1200;
-      const scale=Math.min(1,MAX/Math.max(img.width,img.height));
-      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
-      const c=document.createElement('canvas');c.width=w;c.height=h;
-      c.getContext('2d').drawImage(img,0,0,w,h);
-      const b64=c.toDataURL('image/jpeg',0.85);
-      const b=birds.find(x=>x.id===id);
-      if(!b)return;
-      // Save photo to aves folder
-      const fname=b.photoPath?b.photoPath.split('/').pop():id+'.jpeg';
-      const blob=dataURLtoBlob(b64);
-      fetch('/Desktop/aves/'+encodeURIComponent(fname),{method:'POST',body:blob})
-        .then(()=>{b.photoUrl=PHOTO_BASE+encodeURIComponent(fname);save();render()})
-        .catch(()=>{b.photoUrl=b64;save();render()});
-    };
-    img.src=e.target.result;
-  };
-  reader.readAsDataURL(file);
-  inp.value='';
-}
 function dataURLtoBlob(dataurl){
   const arr=dataurl.split(','),mime=arr[0].match(/:(.*?);/)[1];
   const bstr=atob(arr[1]);let n=bstr.length;const u8arr=new Uint8Array(n);
@@ -369,12 +330,14 @@ function dataURLtoBlob(dataurl){
 
 // ── ADD MODAL ─────────────────────────────────────
 function openAddModal(){
+  if(!isUnlocked())return;
   editingId=null;currentPhotoData=null;currentPhotoPath=null;
   showFormPanel({nameEs:'',nameEn:'',nameSci:'',family:'',date:'',place:'',lat:'',lng:'',notes:'',photoUrl:''});
 }
 
 // ── EDIT MODAL ────────────────────────────────────
 function openEditModal(id){
+  if(!isUnlocked())return;
   const b=birds.find(x=>x.id===id);if(!b)return;
   editingId=id;currentPhotoData=null;currentPhotoPath=b.photoPath||null;
   showFormPanel(b);
@@ -396,20 +359,20 @@ function showFormPanel(b){
       </div>
       <div id="ai-status"></div>
       <div class="form-row">
-        <div class="field"><label>Nombre en español</label><input type="text" id="f-es" value="${esc(b.nameEs||'')}" placeholder="Chara verde"></div>
-        <div class="field"><label>Nombre en inglés</label><input type="text" id="f-en" value="${esc(b.nameEn||'')}" placeholder="Green Jay"></div>
+        <div class="field"><label>Nombre en español</label><input type="text" id="f-es" value="${esc(b.nameEs||'')}" placeholder="Ej: Chara verde"></div>
+        <div class="field"><label>Nombre en inglés</label><input type="text" id="f-en" value="${esc(b.nameEn||'')}" placeholder="Ej: Green Jay"></div>
       </div>
-      <div class="form-row full"><div class="field"><label>Nombre científico</label><input type="text" id="f-sci" value="${esc(b.nameSci||'')}" placeholder="Cyanocorax yncas"></div></div>
+      <div class="form-row full"><div class="field"><label>Nombre científico</label><input type="text" id="f-sci" value="${esc(b.nameSci||'')}" placeholder="Ej: Cyanocorax yncas"></div></div>
       <div class="form-row">
-        <div class="field"><label>Familia</label><input type="text" id="f-fam" value="${esc(b.family||'')}" placeholder="Corvidae"></div>
+        <div class="field"><label>Familia</label><input type="text" id="f-fam" value="${esc(b.family||'')}" placeholder="Ej: Corvidae"></div>
         <div class="field"><label>Fecha</label><input type="date" id="f-date" value="${b.date||''}"></div>
       </div>
-      <div class="form-row full"><div class="field"><label>Lugar</label><input type="text" id="f-place" value="${esc(b.place||'')}" placeholder="Tulum, Quintana Roo"></div></div>
+      <div class="form-row full"><div class="field"><label>Lugar</label><input type="text" id="f-place" value="${esc(b.place||'')}" placeholder="Ej: Tulum, Quintana Roo"></div></div>
       <div class="form-row">
-        <div class="field"><label>Latitud</label><input type="number" id="f-lat" value="${b.lat||''}" step="any" placeholder="20.588"></div>
-        <div class="field"><label>Longitud</label><input type="number" id="f-lng" value="${b.lng||''}" step="any" placeholder="-100.389"></div>
+        <div class="field"><label>Latitud</label><input type="number" id="f-lat" value="${b.lat||''}" step="any" placeholder="Ej. 20.588"></div>
+        <div class="field"><label>Longitud</label><input type="number" id="f-lng" value="${b.lng||''}" step="any" placeholder="Ej. -100.389"></div>
       </div>
-      <div class="form-row full"><div class="field"><label>Notas</label><input type="text" id="f-notes" value="${esc(b.notes||'')}" placeholder="Comportamiento, plumaje, condiciones..."></div></div>
+      <div class="form-row full"><div class="field"><label>Notas</label><input type="text" id="f-notes" value="${esc(b.notes||'')}" placeholder="Ej: Comportamiento, plumaje, condiciones..."></div></div>
     </div>
     <div class="panel-foot">
       ${isEdit?`<button class="btn-danger" onclick="deleteEntry()">Eliminar</button>`:''}
@@ -433,7 +396,7 @@ function handlePhotoDrop(e){
 function handleFormPhoto(file){
   if(!file)return;
   const status=document.getElementById('ai-status');
-  status.innerHTML='<div class="ai-loading"><span class="spin"></span> Leyendo foto e identificando especie...</div>';
+  if(status)status.innerHTML='<div class="ai-loading"><span class="spin"></span> Procesando foto...</div>';
   // Read EXIF
   readExif(file).then(exif=>{
     if(exif.date&&!document.getElementById('f-date').value)document.getElementById('f-date').value=exif.date;
@@ -453,137 +416,14 @@ function handleFormPhoto(file){
       currentPhotoData=c.toDataURL('image/jpeg',0.85);
       const drop=document.getElementById('photo-drop');
       if(drop)drop.innerHTML=`<img id="form-photo-preview" src="${currentPhotoData}"><button class="photo-change-btn" onclick="event.stopPropagation();triggerPhotoInput()">Cambiar foto</button>`;
-      // Identify species via API
-      identifyBird(currentPhotoData).then(species=>{
-        if(species&&species.nameEs){
-          if(!document.getElementById('f-es').value)document.getElementById('f-es').value=species.nameEs;
-          if(!document.getElementById('f-en').value)document.getElementById('f-en').value=species.nameEn;
-          if(!document.getElementById('f-sci').value)document.getElementById('f-sci').value=species.nameSci;
-          if(!document.getElementById('f-fam').value)document.getElementById('f-fam').value=species.family;
-          if(status)status.innerHTML='<div class="ai-badge">✦ Especie identificada automáticamente — confirma o corrige</div>';
-        }else{
-          // Solo limpiamos si sigue el spinner: identifyBird pudo dejar un mensaje de error.
-          if(status&&status.querySelector('.spin'))status.innerHTML='';
-        }
-      });
+      const st=document.getElementById('ai-status');
+      if(st)st.innerHTML='';
     };
     img.src=e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-function setAiStatus(html){
-  const el=document.getElementById('ai-status');
-  if(el)el.innerHTML=html;
-}
-
-async function identifyBird(b64){
-  const key=getApiKey();
-  // Primer uso: pedimos la key en un modal. Cancelar salta la IA solo para esta subida.
-  if(!key){
-    return new Promise(resolve=>{
-      showApiKeyModal(
-        ()=>{identifyBird(b64).then(resolve)},
-        ()=>{setAiStatus('');resolve(null)}
-      );
-    });
-  }
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'x-api-key':key,
-        'anthropic-version':'2023-06-01',
-        'content-type':'application/json',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify({
-        // 'claude-haiku-4-5-20251001' es una alternativa mas barata por foto.
-        model:'claude-sonnet-5',
-        max_tokens:300,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64.split(',')[1]}},
-          {type:'text',text:'What bird species is in this photo? Reply ONLY with a JSON object (no markdown): {"nameEs":"nombre en español","nameEn":"English name","nameSci":"scientific name","family":"taxonomic family"}. If no bird, use empty strings.'}
-        ]}]
-      })
-    });
-    if(resp.status===401){
-      setAiStatus('<div class="ai-loading">❌ No se pudo identificar — revisa tu API key</div>');
-      return null;
-    }
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const data=await resp.json();
-    const txt=(data.content||[]).map(c=>c.text||'').join('').trim();
-    return JSON.parse(txt.replace(/```[a-z]*\n?|\n?```/g,'').trim());
-  }catch(e){
-    setAiStatus('<div class="ai-loading">❌ No se pudo identificar automáticamente. Llena el formulario manualmente.</div>');
-    return null;
-  }
-}
-
-// ── MODAL DE API KEY ────────────────────────────
-let keyModalOnSave=null,keyModalOnCancel=null;
-function showApiKeyModal(onSave,onCancel){
-  keyModalOnSave=onSave||null;keyModalOnCancel=onCancel||null;
-  const hasKey=!!getApiKey(); // solo sabemos SI hay una, nunca la mostramos
-  document.getElementById('key-panel').innerHTML=`
-    <div class="panel-head">
-      <h3>🔑 API key de Anthropic</h3>
-      <button class="btn-close" onclick="cancelApiKeyModal()">×</button>
-    </div>
-    <div class="panel-body">
-      <p style="font-size:13px;color:var(--ink-light);line-height:1.7;margin-bottom:1rem">
-        Para identificar especies automáticamente, pega tu API key de Anthropic (console.anthropic.com).
-        Se guarda solo en este navegador — nunca se sube a GitHub.
-      </p>
-      <div class="form-row full">
-        <div class="field">
-          <label>API key</label>
-          <input type="password" id="api-key-in" placeholder="sk-ant-..." autocomplete="off" onkeydown="if(event.key==='Enter')saveApiKeyFromModal()">
-        </div>
-      </div>
-      ${hasKey?`<p style="font-size:12px;color:var(--ink-faint);margin-top:8px">Ya hay una key guardada en este navegador. Escribe una nueva para reemplazarla.</p>`:''}
-    </div>
-    <div class="panel-foot">
-      ${hasKey?`<button class="btn-danger" onclick="clearApiKey()">Borrar key guardada</button>`:''}
-      <button class="btn-secondary" onclick="cancelApiKeyModal()">Cancelar</button>
-      <button class="btn-primary" onclick="saveApiKeyFromModal()">Guardar</button>
-    </div>`;
-  document.getElementById('key-overlay').classList.add('open');
-  const inp=document.getElementById('api-key-in');
-  if(inp)inp.focus();
-}
-function closeApiKeyModal(){
-  document.getElementById('key-overlay').classList.remove('open');
-  document.getElementById('key-panel').innerHTML=''; // saca la key escrita del DOM
-  keyModalOnSave=null;keyModalOnCancel=null;
-}
-function saveApiKeyFromModal(){
-  const inp=document.getElementById('api-key-in');
-  const val=inp?inp.value.trim():'';
-  if(!val){if(inp)inp.focus();return}
-  setApiKey(val);
-  const cb=keyModalOnSave;
-  closeApiKeyModal();
-  if(cb)cb();
-}
-function cancelApiKeyModal(){
-  const cb=keyModalOnCancel;
-  closeApiKeyModal();
-  if(cb)cb();
-}
-function clearApiKey(){
-  setApiKey('');
-  const cb=keyModalOnCancel;
-  closeApiKeyModal();
-  if(cb)cb();
-}
-function openApiKeySettings(){
-  showApiKeyModal(null,null);
-}
-document.getElementById('key-overlay').addEventListener('click',e=>{
-  if(e.target===document.getElementById('key-overlay'))cancelApiKeyModal();
-});
 
 // ── DUPLICADOS ──────────────────────────────
 // Distancia de edicion clasica entre dos cadenas (minusculas, sin espacios extra).
@@ -735,7 +575,7 @@ function openDetailModal(id){
     </div>
     <div class="panel-foot">
       <button class="btn-secondary" onclick="closeOverlay()">Cerrar</button>
-      <button class="btn-primary" onclick="closeOverlay();openEditModal('${b.id}')">Editar</button>
+      <button class="btn-primary" onclick="closeOverlay();requestUnlock(()=>openEditModal('${b.id}'))">Editar</button>
     </div>`);
 }
 
@@ -751,28 +591,6 @@ function closeOverlay(){
 document.getElementById('overlay').addEventListener('click',e=>{
   if(e.target===document.getElementById('overlay'))closeOverlay();
 });
-
-// ── EXPORT / IMPORT ───────────────────────────────
-function exportJSON(){
-  if(!birds.length){alert('No hay registros.');return}
-  const blob=new Blob([JSON.stringify(birds.map(b=>{const{photoUrl,...r}=b;return r}),null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`guia_aves_${new Date().toISOString().slice(0,10)}.json`;a.click();
-}
-function importJSON(inp){
-  const file=inp.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const data=JSON.parse(e.target.result);
-      if(!Array.isArray(data))throw new Error();
-      if(!confirm(`¿Importar ${data.length} registros? Reemplazará el álbum actual.`))return;
-      birds=data.map(b=>({...b,photoUrl:buildPhotoUrl(b)}));
-      save();render();alert(`✅ ${data.length} registros importados.`);
-    }catch(e){alert('❌ Archivo no válido.')}
-  };
-  r.readAsText(file);inp.value='';
-}
 
 // ── TAB ───────────────────────────────────────────
 function tab(t){
@@ -847,6 +665,7 @@ function readExif(file){
 }
 
 loadData();
+updateAdminUI();
 </script>
 </body>
 </html>
