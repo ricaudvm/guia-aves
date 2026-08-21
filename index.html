@@ -216,6 +216,12 @@ function fmtDate(d){
   if(!d)return'—';
   try{const[y,m,day]=d.split('-');const ms=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];return`${parseInt(day)} ${ms[parseInt(m)-1]} ${y}`}catch(e){return d}
 }
+// Los nombres de archivo de fotos van SIN acentos (Colibri, no Colibri con tilde).
+// NFD separa la tilde de su letra y el replace borra las marcas sueltas; eso tambien
+// convierte n con virgulilla en n, igual que los archivos ya guardados en aves/.
+function stripAccents(s){
+  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
 function buildPhotoUrl(b){
   return b.photoPath?PHOTO_BASE+encodeURIComponent(b.photoPath.split('/').pop()):'';
 }
@@ -533,7 +539,7 @@ function saveForm(){
 function finalizeSave(entry,isEdit,id){
   // If new photo uploaded, save it
   if(currentPhotoData){
-    const fname=entry.nameEs?entry.nameEs.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9\s,\.]/g,'').trim()+'.jpeg':id+'.jpeg';
+    const fname=entry.nameEs?stripAccents(entry.nameEs).replace(/[^a-zA-Z0-9\s,\.]/g,'').trim()+'.jpeg':id+'.jpeg';
     entry.photoPath='/Users/MauricioRicaud/Desktop/aves/'+fname;
     entry.photoUrl=PHOTO_BASE+encodeURIComponent(fname);
     const blob=dataURLtoBlob(currentPhotoData);
@@ -544,6 +550,8 @@ function finalizeSave(entry,isEdit,id){
   if(isEdit){const i=birds.findIndex(x=>x.id===id);if(i>=0)birds[i]=entry}
   else birds.unshift(entry);
   save();closeOverlay();render();
+  // GitHub Pages no tiene servidor: lo guardado aqui solo vive en este navegador.
+  alert('✅ Guardado como vista previa en este navegador.\n\nPara que esta ave quede publicada de forma permanente en la guía, cuéntaselo a Claude en el chat (sube la foto y los datos ahí).');
 }
 
 function deleteEntry(){
