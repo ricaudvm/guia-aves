@@ -615,10 +615,24 @@ function renderMap(){
   if(!pts.length){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink-light);font-size:14px">Agrega coordenadas a tus registros para ver el mapa</div>';return}
   if(!leafMap){leafMap=L.map('map-el');L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(leafMap)}
   leafMap.eachLayer(l=>{if(l instanceof L.Marker)leafMap.removeLayer(l)});
-  const bounds=[];
+  const groups=new Map();
   pts.forEach(b=>{
-    L.marker([b.lat,b.lng]).addTo(leafMap).bindPopup(`<strong>${esc(b.nameEs||b.nameSci)}</strong><br><em style="font-size:11px">${esc(b.nameSci)}</em><br><span style="font-size:11px">${esc(b.place||'')}</span>`);
-    bounds.push([b.lat,b.lng]);
+    const key=b.lat+','+b.lng;
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(b);
+  });
+  const bounds=[];
+  groups.forEach(group=>{
+    const{lat,lng}=group[0];
+    let popup;
+    if(group.length===1){
+      const b=group[0];
+      popup=`<strong>${esc(b.nameEs||b.nameSci)}</strong><br><em style="font-size:11px">${esc(b.nameSci)}</em><br><span style="font-size:11px">${esc(b.place||'')}</span>`;
+    }else{
+      popup=`<strong>${group.length} aves en este punto</strong><br>`+group.map(b=>`<span style="font-size:11px">${esc(b.nameEs||b.nameSci)} — ${esc(b.date||'')}</span>`).join('<br>');
+    }
+    L.marker([lat,lng]).addTo(leafMap).bindPopup(popup);
+    bounds.push([lat,lng]);
   });
   leafMap.fitBounds(bounds,{padding:[40,40]});
   document.getElementById('map-chips').innerHTML=pts.map(b=>`<div class="map-chip" onclick="if(leafMap)leafMap.flyTo([${b.lat},${b.lng}],13)">${esc(b.nameEs||b.nameSci)}</div>`).join('');
