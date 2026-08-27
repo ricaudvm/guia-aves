@@ -201,9 +201,9 @@
     "nameSci": "Egretta caerulea",
     "family": "Ardeidae",
     "date": "2025-12-30",
-    "place": "Tulum, Quintana Roo, México",
-    "lat": null,
-    "lng": null,
+    "place": "Muyil – Chunyaxché, Quintana Roo, México",
+    "lat": 20.074278,
+    "lng": -87.599261,
     "notes": "",
     "photoPath": "/Users/MauricioRicaud/Desktop/aves/DSC01284.jpeg"
   },
@@ -351,19 +351,6 @@
     "photoPath": "/Users/MauricioRicaud/Desktop/aves/Quetzal, Resplendent Quetzal (Pharomachrus mocinno).jpeg"
   },
   {
-    "id": "8592092588",
-    "nameEs": "Momoto coroniazul",
-    "nameEn": "Blue-crowned Motmot",
-    "nameSci": "Momotus coeruliceps",
-    "family": "Momotidae",
-    "date": "2024-12-27",
-    "place": "Monteverde, Costa Rica",
-    "lat": 10.308339,
-    "lng": -84.811153,
-    "notes": "",
-    "photoPath": "/Users/MauricioRicaud/Desktop/aves/Momoto coroniazul, Blue-crowned Motmot (Momotus coeruliceps).jpeg"
-  },
-  {
     "id": "7092711945",
     "nameEs": "Chorlo tildío",
     "nameEn": "Killdeer",
@@ -508,7 +495,7 @@
   },
   {
     "id": "1756468311",
-    "nameEs": "Motmot canelo mayor",
+    "nameEs": "Momoto canelo mayor",
     "nameEn": "Rufous Motmot",
     "nameSci": "Baryphthengus martii",
     "family": "Momotidae",
@@ -1002,7 +989,7 @@
   },
   {
     "id": "2567713440",
-    "nameEs": "Momoto coronizasul",
+    "nameEs": "Momoto coroniazul",
     "nameEn": "Blue-crowned Motmot",
     "nameSci": "Momotus coeruliceps",
     "family": "Momotidae",
