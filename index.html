@@ -36,6 +36,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .nav-actions{display:flex;gap:8px;align-items:center;padding:8px 0;flex-wrap:wrap}
 .search-box{border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--cream);color:var(--ink);width:200px;outline:none}
 .filter-select{border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--cream);color:var(--ink);cursor:pointer;outline:none}
+.btn-add{background:var(--green);color:white;border:none;border-radius:6px;padding:8px 18px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s}
+.btn-add:hover{background:#2e5020}
 .btn-ghost{background:none;border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--ink);cursor:pointer}
 
 /* MAIN */
@@ -57,9 +59,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .tag.fam{background:var(--green-light);border-color:var(--green-mid);color:var(--green);font-weight:500}
 
 /* EMPTY */
-.empty-state{text-align:center;padding:5rem 2rem;border:1.5px dashed var(--border);border-radius:var(--radius-lg);grid-column:1/-1}
+.empty-state{text-align:center;padding:5rem 2rem;border:1.5px dashed var(--border);border-radius:var(--radius-lg);grid-column:1/-1;cursor:pointer;transition:background .15s}
+.empty-state:hover{background:var(--green-light)}
 .empty-icon{font-size:48px;margin-bottom:1rem}
 .empty-title{font-family:'Playfair Display',serif;font-size:22px;margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--ink-light);line-height:1.7}
 
 /* MAP */
 #map-el{height:500px;border-radius:var(--radius-lg);border:1px solid var(--border)}
@@ -77,10 +81,30 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .panel-body{padding:1.5rem}
 .panel-foot{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;align-items:center}
 
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row.full{grid-template-columns:1fr}
+.field label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-light);display:block;margin-bottom:5px;font-weight:500}
+.field input,.field select{width:100%;border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background:var(--cream);outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--green)}
+
+/* PHOTO UPLOAD */
+.photo-upload-area{border:2px dashed var(--border);border-radius:var(--radius);padding:1rem;text-align:center;cursor:pointer;margin-bottom:1rem;transition:all .15s;position:relative}
+.photo-upload-area:hover{border-color:var(--green);background:var(--green-light)}
+.photo-upload-area img{max-height:260px;width:100%;object-fit:contain;border-radius:6px;display:block}
+.photo-upload-label{font-size:13px;color:var(--ink-light);padding:1rem 0}
+.photo-change-btn{position:absolute;bottom:8px;right:8px;background:rgba(255,255,255,0.9);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* AI badge */
+.ai-loading{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-light);margin-bottom:12px;padding:6px 12px;background:var(--cream);border-radius:20px;border:1px solid var(--border)}
+.spin{width:12px;height:12px;border:2px solid var(--green-mid);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* BUTTONS */
+.btn-primary{background:var(--ink);color:var(--cream);border:none;border-radius:6px;padding:9px 22px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s}
+.btn-primary:hover{background:#333}
 .btn-secondary{background:none;border:1px solid var(--border);border-radius:6px;padding:9px 20px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);cursor:pointer}
+.btn-danger{background:none;border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--red);cursor:pointer;margin-right:auto}
 
 /* DETAIL */
 .detail-img{width:100%;max-height:70vh;object-fit:contain;display:block;border-radius:var(--radius);margin-bottom:1.25rem;background:var(--green-light)}
@@ -126,6 +150,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
   <div class="nav-actions">
     <input type="text" class="search-box" placeholder="Buscar especie..." id="q" oninput="render()">
     <select class="filter-select" id="fam-filter" onchange="render()"><option value="">Todas las familias</option></select>
+    <button class="btn-add" onclick="openAddModal()">+ Agregar ave</button>
   </div>
 </nav>
 
@@ -140,16 +165,27 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+const STORE_KEY = 'guia_aves_v1';
 const JSON_URL = 'aves_album.json';
 const PHOTO_BASE = 'aves/';
 
 let birds = [];
 let leafMap = null;
+let editingId = null;
+let currentPhotoData = null; // base64 for new uploads
+let currentPhotoPath = null; // existing path
+let pendingEntry = null; // entry en espera de confirmacion por posible duplicado
 
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 function fmtDate(d){
   if(!d)return'—';
   try{const[y,m,day]=d.split('-');const ms=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];return`${parseInt(day)} ${ms[parseInt(m)-1]} ${y}`}catch(e){return d}
+}
+// Los nombres de archivo de fotos van SIN acentos (Colibri, no Colibri con tilde).
+// NFD separa la tilde de su letra y el replace borra las marcas sueltas; eso tambien
+// convierte n con virgulilla en n, igual que los archivos ya guardados en aves/.
+function stripAccents(s){
+  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
 function buildPhotoUrl(b){
   return b.photoPath?PHOTO_BASE+encodeURIComponent(b.photoPath.split('/').pop()):'';
@@ -161,18 +197,37 @@ async function loadData(){
     const resp=await fetch(JSON_URL);
     if(!resp.ok)throw new Error();
     const fromFile=await resp.json();
+    const stored=localStorage.getItem(STORE_KEY);
+    let edits={};
+    if(stored){try{JSON.parse(stored).forEach(b=>{edits[b.id]=b})}catch(e){}}
     birds=fromFile.map(b=>{
-      b.photoUrl=buildPhotoUrl(b);
-      return b;
+      const merged=edits[b.id]?{...b,...edits[b.id]}:b;
+      merged.photoUrl=buildPhotoUrl(b);
+      return merged;
     });
     render();
   }catch(e){
     document.getElementById('grid-out').innerHTML=`
-      <div class="empty-state">
+      <div class="empty-state" onclick="openAddModal()">
         <div class="empty-icon">🦜</div>
         <div class="empty-title">Tu guía de campo está vacía</div>
+        <div class="empty-sub">Haz clic en "+ Agregar ave" para comenzar</div>
       </div>`;
   }
+}
+
+function save(){
+  try{
+    const toStore=birds.map(b=>{const{photoUrl,...rest}=b;return rest});
+    localStorage.setItem(STORE_KEY,JSON.stringify(toStore));
+  }catch(e){}
+  // Also save to JSON file
+  const toStore=birds.map(b=>{const{photoUrl,...rest}=b;return rest});
+  fetch('/Desktop/aves_album.json',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(toStore,null,2)
+  }).catch(()=>{});
 }
 
 // ── RENDER ────────────────────────────────────────
@@ -194,7 +249,7 @@ function render(){
   document.getElementById('hdr-sub').textContent=`${birds.length} especie${birds.length!==1?'s':''} registrada${birds.length!==1?'s':''}`;
   const out=document.getElementById('grid-out');
   if(!birds.length){
-    out.innerHTML=`<div class="empty-state"><div class="empty-icon">🦜</div><div class="empty-title">Tu guía de campo está vacía</div></div>`;
+    out.innerHTML=`<div class="empty-state" onclick="openAddModal()"><div class="empty-icon">🦜</div><div class="empty-title">Tu guía de campo está vacía</div><div class="empty-sub">Haz clic aquí o en "+ Agregar ave"</div></div>`;
     return;
   }
   if(!filt.length){out.innerHTML='<div class="page-loading">Sin resultados</div>';return}
@@ -220,6 +275,237 @@ function render(){
     </div>`).join('');
 }
 
+function dataURLtoBlob(dataurl){
+  const arr=dataurl.split(','),mime=arr[0].match(/:(.*?);/)[1];
+  const bstr=atob(arr[1]);let n=bstr.length;const u8arr=new Uint8Array(n);
+  while(n--)u8arr[n]=bstr.charCodeAt(n);
+  return new Blob([u8arr],{type:mime});
+}
+
+// ── ADD MODAL ─────────────────────────────────────
+function openAddModal(){
+  editingId=null;currentPhotoData=null;currentPhotoPath=null;
+  showFormPanel({nameEs:'',nameEn:'',nameSci:'',family:'',date:'',place:'',lat:'',lng:'',notes:'',photoUrl:''});
+}
+
+// ── EDIT MODAL ────────────────────────────────────
+function openEditModal(id){
+  const b=birds.find(x=>x.id===id);if(!b)return;
+  editingId=id;currentPhotoData=null;currentPhotoPath=b.photoPath||null;
+  showFormPanel(b);
+}
+
+function showFormPanel(b){
+  const isEdit=!!editingId;
+  const photoSrc=b.photoUrl||'';
+  openOverlay(`
+    <div class="panel-head">
+      <h3>${isEdit?'Editar registro':'Nueva ave'}</h3>
+      <button class="btn-close" onclick="closeOverlay()">×</button>
+    </div>
+    <div class="panel-body">
+      <div class="photo-upload-area" id="photo-drop" onclick="triggerPhotoInput()" ondragover="event.preventDefault()" ondrop="handlePhotoDrop(event)">
+        ${photoSrc
+          ?`<img id="form-photo-preview" src="${photoSrc}" onerror="this.style.display='none'"><button class="photo-change-btn" onclick="event.stopPropagation();triggerPhotoInput()">Cambiar foto</button>`
+          :`<div class="photo-upload-label">📷 Haz clic o arrastra una foto aquí</div>`}
+      </div>
+      <div id="ai-status"></div>
+      <div class="form-row">
+        <div class="field"><label>Nombre en español</label><input type="text" id="f-es" value="${esc(b.nameEs||'')}" placeholder="Ej: Chara verde"></div>
+        <div class="field"><label>Nombre en inglés</label><input type="text" id="f-en" value="${esc(b.nameEn||'')}" placeholder="Ej: Green Jay"></div>
+      </div>
+      <div class="form-row full"><div class="field"><label>Nombre científico</label><input type="text" id="f-sci" value="${esc(b.nameSci||'')}" placeholder="Ej: Cyanocorax yncas"></div></div>
+      <div class="form-row">
+        <div class="field"><label>Familia</label><input type="text" id="f-fam" value="${esc(b.family||'')}" placeholder="Ej: Corvidae"></div>
+        <div class="field"><label>Fecha</label><input type="date" id="f-date" value="${b.date||''}"></div>
+      </div>
+      <div class="form-row full"><div class="field"><label>Lugar</label><input type="text" id="f-place" value="${esc(b.place||'')}" placeholder="Ej: Tulum, Quintana Roo"></div></div>
+      <div class="form-row">
+        <div class="field"><label>Latitud</label><input type="number" id="f-lat" value="${b.lat||''}" step="any" placeholder="Ej. 20.588"></div>
+        <div class="field"><label>Longitud</label><input type="number" id="f-lng" value="${b.lng||''}" step="any" placeholder="Ej. -100.389"></div>
+      </div>
+      <div class="form-row full"><div class="field"><label>Notas</label><input type="text" id="f-notes" value="${esc(b.notes||'')}" placeholder="Ej: Comportamiento, plumaje, condiciones..."></div></div>
+    </div>
+    <div class="panel-foot">
+      ${isEdit?`<button class="btn-danger" onclick="deleteEntry()">Eliminar</button>`:''}
+      <button class="btn-secondary" onclick="closeOverlay()">Cancelar</button>
+      <button class="btn-primary" onclick="saveForm()">Guardar</button>
+    </div>`);
+}
+
+// Photo input inside form
+function triggerPhotoInput(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';
+  inp.onchange=e=>handleFormPhoto(e.target.files[0]);
+  inp.click();
+}
+function handlePhotoDrop(e){
+  e.preventDefault();
+  const file=e.dataTransfer.files[0];
+  if(file&&file.type.startsWith('image/'))handleFormPhoto(file);
+}
+function handleFormPhoto(file){
+  if(!file)return;
+  const status=document.getElementById('ai-status');
+  if(status)status.innerHTML='<div class="ai-loading"><span class="spin"></span> Procesando foto...</div>';
+  // Read EXIF
+  readExif(file).then(exif=>{
+    if(exif.date&&!document.getElementById('f-date').value)document.getElementById('f-date').value=exif.date;
+    if(exif.lat&&!document.getElementById('f-lat').value)document.getElementById('f-lat').value=exif.lat;
+    if(exif.lng&&!document.getElementById('f-lng').value)document.getElementById('f-lng').value=exif.lng;
+  });
+  // Compress and preview
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1200;
+      const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      currentPhotoData=c.toDataURL('image/jpeg',0.85);
+      const drop=document.getElementById('photo-drop');
+      if(drop)drop.innerHTML=`<img id="form-photo-preview" src="${currentPhotoData}"><button class="photo-change-btn" onclick="event.stopPropagation();triggerPhotoInput()">Cambiar foto</button>`;
+      const st=document.getElementById('ai-status');
+      if(st)st.innerHTML='';
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+
+// ── DUPLICADOS ──────────────────────────────
+// Distancia de edicion clasica entre dos cadenas (minusculas, sin espacios extra).
+function levenshtein(a,b){
+  a=(a||'').toLowerCase().trim();b=(b||'').toLowerCase().trim();
+  if(a===b)return 0;
+  if(!a.length)return b.length;
+  if(!b.length)return a.length;
+  let prev=new Array(b.length+1);
+  for(let j=0;j<=b.length;j++)prev[j]=j;
+  for(let i=1;i<=a.length;i++){
+    const cur=[i];
+    for(let j=1;j<=b.length;j++){
+      const cost=a[i-1]===b[j-1]?0:1;
+      cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+cost);
+    }
+    prev=cur;
+  }
+  return prev[b.length];
+}
+function isSimilar(a,b){
+  const x=(a||'').toLowerCase().trim(),y=(b||'').toLowerCase().trim();
+  if(!x||!y)return false;          // un nombre vacio nunca cuenta como coincidencia
+  if(x===y)return true;
+  if(Math.abs(x.length-y.length)>4)return false;
+  return levenshtein(x,y)<=2;
+}
+function findDuplicates(entry,excludeId){
+  return birds.filter(b=>{
+    if(excludeId&&b.id===excludeId)return false;
+    return isSimilar(b.nameSci,entry.nameSci)||isSimilar(b.nameEs,entry.nameEs);
+  });
+}
+function showDuplicateWarning(entry,dups){
+  const rows=dups.map(d=>`
+      <div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+        ${d.photoUrl?`<img src="${d.photoUrl}" alt="${esc(d.nameEs||'')}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;background:var(--green-light);flex:none" onerror="this.style.display='none'">`:''}
+        <div style="min-width:0">
+          <div class="card-es">${esc(d.nameEs||'—')}</div>
+          <div class="card-sci">${esc(d.nameSci||'')}</div>
+          <div class="card-tags">
+            ${d.date?`<span class="tag">${fmtDate(d.date)}</span>`:''}
+            ${d.place?`<span class="tag">${esc(d.place)}</span>`:''}
+          </div>
+        </div>
+      </div>`).join('');
+  openOverlay(`
+    <div class="panel-head">
+      <h3>⚠️ Posible duplicado</h3>
+      <button class="btn-close" onclick="cancelDuplicateWarning()">×</button>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:13px;color:var(--ink-light);line-height:1.7;margin-bottom:4px">
+        Ya tienes ${dups.length===1?'un registro parecido':`${dups.length} registros parecidos`} a <strong>${esc(entry.nameEs||entry.nameSci)}</strong>:
+      </p>
+      ${rows}
+      <p style="font-size:13px;color:var(--ink-light);line-height:1.7;margin-top:1rem">
+        Si es un avistamiento distinto (otra fecha o lugar), puedes agregarlo de todas formas.
+      </p>
+    </div>
+    <div class="panel-foot">
+      <button class="btn-secondary" onclick="cancelDuplicateWarning()">Revisar antes de guardar</button>
+      <button class="btn-primary" onclick="confirmDuplicateSave()">Agregar de todas formas</button>
+    </div>`);
+}
+function cancelDuplicateWarning(){
+  const e=pendingEntry;
+  pendingEntry=null;
+  if(!e){closeOverlay();return}
+  // Reabrimos el formulario intacto, incluida la foto en proceso (currentPhotoData).
+  showFormPanel({...e,photoUrl:currentPhotoData||e.photoUrl||''});
+}
+function confirmDuplicateSave(){
+  const e=pendingEntry;
+  pendingEntry=null;
+  if(!e)return;
+  finalizeSave(e,false,e.id);
+}
+
+function saveForm(){
+  const nameEs=(document.getElementById('f-es')||{}).value?.trim()||'';
+  const nameSci=(document.getElementById('f-sci')||{}).value?.trim()||'';
+  if(!nameEs&&!nameSci){alert('Ingresa al menos nombre en español o científico');return}
+  const isEdit=!!editingId;
+  const id=editingId||Date.now().toString();
+  const entry={
+    id,
+    nameEs,nameEn:document.getElementById('f-en').value.trim(),
+    nameSci,family:document.getElementById('f-fam').value.trim(),
+    date:document.getElementById('f-date').value,
+    place:document.getElementById('f-place').value.trim(),
+    lat:parseFloat(document.getElementById('f-lat').value)||null,
+    lng:parseFloat(document.getElementById('f-lng').value)||null,
+    notes:document.getElementById('f-notes').value.trim(),
+    photoPath:currentPhotoPath||null,
+    photoUrl:''
+  };
+  // Aviso informativo de duplicados: solo al agregar especies nuevas, nunca al editar.
+  if(!isEdit){
+    const dups=findDuplicates(entry);
+    if(dups.length){pendingEntry=entry;showDuplicateWarning(entry,dups);return}
+  }
+  finalizeSave(entry,isEdit,id);
+}
+
+// Guardado final: foto + insercion en birds + persistencia.
+function finalizeSave(entry,isEdit,id){
+  // If new photo uploaded, save it
+  if(currentPhotoData){
+    const fname=entry.nameEs?stripAccents(entry.nameEs).replace(/[^a-zA-Z0-9\s,\.]/g,'').trim()+'.jpeg':id+'.jpeg';
+    entry.photoPath='/Users/MauricioRicaud/Desktop/aves/'+fname;
+    entry.photoUrl=PHOTO_BASE+encodeURIComponent(fname);
+    const blob=dataURLtoBlob(currentPhotoData);
+    fetch('/Desktop/aves/'+encodeURIComponent(fname),{method:'POST',body:blob}).catch(()=>{});
+  }else if(currentPhotoPath){
+    entry.photoUrl=buildPhotoUrl(entry);
+  }
+  if(isEdit){const i=birds.findIndex(x=>x.id===id);if(i>=0)birds[i]=entry}
+  else birds.unshift(entry);
+  save();closeOverlay();render();
+  // GitHub Pages no tiene servidor: lo guardado aqui solo vive en este navegador.
+  alert('✅ Guardado como vista previa en este navegador.\n\nPara que esta ave quede publicada de forma permanente en la guía, cuéntaselo a Claude en el chat (sube la foto y los datos ahí).');
+}
+
+function deleteEntry(){
+  if(!editingId||!confirm('¿Eliminar este registro?'))return;
+  birds=birds.filter(x=>x.id!==editingId);
+  save();closeOverlay();render();
+}
+
 // ── DETAIL MODAL ──────────────────────────────────
 function openDetailModal(id){
   const b=birds.find(x=>x.id===id);if(!b)return;
@@ -243,6 +529,7 @@ function openDetailModal(id){
     </div>
     <div class="panel-foot">
       <button class="btn-secondary" onclick="closeOverlay()">Cerrar</button>
+      <button class="btn-primary" onclick="closeOverlay();openEditModal('${b.id}')">Editar</button>
     </div>`);
 }
 
@@ -253,6 +540,7 @@ function openOverlay(html){
 }
 function closeOverlay(){
   document.getElementById('overlay').classList.remove('open');
+  editingId=null;currentPhotoData=null;pendingEntry=null;
 }
 document.getElementById('overlay').addEventListener('click',e=>{
   if(e.target===document.getElementById('overlay'))closeOverlay();
@@ -294,6 +582,54 @@ function renderMap(){
   });
   leafMap.fitBounds(bounds,{padding:[40,40]});
   document.getElementById('map-chips').innerHTML=pts.map(b=>`<div class="map-chip" onclick="if(leafMap)leafMap.flyTo([${b.lat},${b.lng}],13)">${esc(b.nameEs||b.nameSci)}</div>`).join('');
+}
+
+// ── EXIF ──────────────────────────────────────────
+function readExif(file){
+  return new Promise(resolve=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const buf=e.target.result,view=new DataView(buf);
+      const res={date:null,lat:null,lng:null};
+      try{
+        if(view.getUint16(0)!==0xFFD8){resolve(res);return}
+        let off=2;
+        while(off<buf.byteLength-4){
+          const marker=view.getUint16(off);
+          const segLen=view.getUint16(off+2);
+          if(marker===0xFFE1){
+            const hdr=String.fromCharCode(...new Uint8Array(buf,off+4,6));
+            if(hdr.startsWith('Exif')){
+              const tB=off+10;const le=view.getUint16(tB)===0x4949;
+              const ru16=o=>view.getUint16(tB+o,le);const ru32=o=>view.getUint32(tB+o,le);
+              const rRat=o=>{const n=ru32(o),d=ru32(o+4);return d?n/d:0};
+              const rStr=(o,l)=>{let s='';for(let i=0;i<l;i++){if(tB+o+i>=buf.byteLength)break;const c=view.getUint8(tB+o+i);if(!c)break;s+=String.fromCharCode(c)}return s.trim()};
+              const ifd0=ru32(4),n0=ru16(ifd0);let gpsOff=null,exifOff=null;
+              for(let i=0;i<n0;i++){const b=ifd0+2+i*12;const tag=ru16(b);if(tag===0x8825)gpsOff=ru32(b+8);if(tag===0x8769)exifOff=ru32(b+8)}
+              if(exifOff){const ne=ru16(exifOff);for(let i=0;i<ne;i++){const b=exifOff+2+i*12;if(ru16(b)===0x9003){const cnt=ru32(b+4);const vo=cnt>4?ru32(b+8):b+8;const ds=rStr(vo,20);if(ds&&ds.length>=10)res.date=ds.substring(0,10).replace(/:/g,'-')}}}
+              if(!res.date){for(let i=0;i<n0;i++){const b=ifd0+2+i*12;if(ru16(b)===0x0132){const cnt=ru32(b+4);const vo=cnt>4?ru32(b+8):b+8;const ds=rStr(vo,20);if(ds&&ds.length>=10)res.date=ds.substring(0,10).replace(/:/g,'-')}}}
+              if(gpsOff){const ng=ru16(gpsOff);let lD,lM,lS,lR,oD,oM,oS,oR;
+                for(let i=0;i<ng;i++){const b=gpsOff+2+i*12;const tag=ru16(b);const vo=ru32(b+8);
+                  if(tag===1)lR=rStr(b+8,2);if(tag===3)oR=rStr(b+8,2);
+                  if(tag===2){lD=rRat(vo);lM=rRat(vo+8);lS=rRat(vo+16)}
+                  if(tag===4){oD=rRat(vo);oM=rRat(vo+8);oS=rRat(vo+16)}}
+                if(lD!==undefined&&oD!==undefined){
+                  const lat=lD+(lM||0)/60+(lS||0)/3600;const lng=oD+(oM||0)/60+(oS||0)/3600;
+                  res.lat=parseFloat(((lR||'N')==='S'?-lat:lat).toFixed(6));
+                  res.lng=parseFloat(((oR||'E')==='W'?-lng:lng).toFixed(6));
+                }}
+            }
+            break;
+          }
+          if((marker&0xFF00)!==0xFF00)break;
+          off+=2+segLen;
+        }
+      }catch(e){}
+      resolve(res);
+    };
+    r.onerror=()=>resolve({date:null,lat:null,lng:null});
+    r.readAsArrayBuffer(file);
+  });
 }
 
 loadData();
