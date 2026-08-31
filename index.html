@@ -151,6 +151,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
     <input type="text" class="search-box" placeholder="Buscar especie..." id="q" oninput="render()">
     <select class="filter-select" id="fam-filter" onchange="render()"><option value="">Todas las familias</option></select>
     <button class="btn-add" onclick="openAddModal()">+ Agregar ave</button>
+    <button class="btn-add" onclick="exportChanges()">⬇ Exportar cambios</button>
   </div>
 </nav>
 
@@ -194,7 +195,7 @@ function buildPhotoUrl(b){
 // ── DATA ──────────────────────────────────────────
 async function loadData(){
   try{
-    const resp=await fetch(JSON_URL);
+    const resp=await fetch(JSON_URL+'?v='+Date.now());
     if(!resp.ok)throw new Error();
     const fromFile=await resp.json();
     const stored=localStorage.getItem(STORE_KEY);
@@ -228,6 +229,22 @@ function save(){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(toStore,null,2)
   }).catch(()=>{});
+}
+
+// ── EXPORTAR ──────────────────────────────────────
+function exportChanges(){
+  const toExport=birds.map(b=>{const{photoUrl,...rest}=b;return rest});
+  const json=JSON.stringify(toExport,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='aves_album.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert('Se descargó aves_album.json. Muévelo a la carpeta del proyecto (reemplazando el actual) y corre ./publicar.sh en Terminal.');
 }
 
 // ── RENDER ────────────────────────────────────────
