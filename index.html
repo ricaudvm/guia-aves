@@ -121,7 +121,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 /* SPINNER PAGE */
 .page-loading{text-align:center;padding:4rem;color:var(--ink-light);font-size:14px;grid-column:1/-1}
 .page-spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
-
+#btn-top{position:fixed;bottom:2rem;right:2rem;width:44px;height:44px;border-radius:50%;background:var(--ink);color:var(--cream);border:none;font-size:20px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.2);opacity:0;pointer-events:none;transition:opacity .25s;z-index:50;display:flex;align-items:center;justify-content:center}
+#btn-top.visible{opacity:1;pointer-events:auto}
+#btn-top:hover{background:#333}
 </style>
 </head>
 <body>
@@ -651,5 +653,10 @@ function readExif(file){
 
 loadData();
 </script>
-</body>
+<button id="btn-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Volver arriba">↑</button>
+<script>
+  window.addEventListener('scroll',()=>{
+    document.getElementById('btn-top').classList.toggle('visible',window.scrollY>400);
+  });</script></body>
+
 </html>
