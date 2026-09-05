@@ -228,13 +228,6 @@ function save(){
     const toStore=birds.map(b=>{const{photoUrl,...rest}=b;return rest});
     localStorage.setItem(STORE_KEY,JSON.stringify(toStore));
   }catch(e){}
-  // Also save to JSON file
-  const toStore=birds.map(b=>{const{photoUrl,...rest}=b;return rest});
-  fetch('/Desktop/aves_album.json',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(toStore,null,2)
-  }).catch(()=>{});
 }
 
 // ── EXPORTAR ──────────────────────────────────────
