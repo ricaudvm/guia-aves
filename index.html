@@ -191,7 +191,9 @@ function stripAccents(s){
   return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
 function buildPhotoUrl(b){
-  return b.photoPath?PHOTO_BASE+encodeURIComponent(b.photoPath.split('/').pop()):'';
+  if(!b.photoPath)return'';
+  if(b.photoPath.startsWith('data:'))return b.photoPath;
+  return PHOTO_BASE+encodeURIComponent(b.photoPath.split('/').pop());
 }
 
 // ── DATA ──────────────────────────────────────────
@@ -504,11 +506,8 @@ function saveForm(){
 function finalizeSave(entry,isEdit,id){
   // If new photo uploaded, save it
   if(currentPhotoData){
-    const fname=entry.nameEs?stripAccents(entry.nameEs).replace(/[^a-zA-Z0-9\s,\.]/g,'').trim()+'.jpeg':id+'.jpeg';
-    entry.photoPath='/Users/MauricioRicaud/Desktop/aves/'+fname;
-    entry.photoUrl=PHOTO_BASE+encodeURIComponent(fname);
-    const blob=dataURLtoBlob(currentPhotoData);
-    fetch('/Desktop/aves/'+encodeURIComponent(fname),{method:'POST',body:blob}).catch(()=>{});
+    entry.photoPath=currentPhotoData;
+    entry.photoUrl=currentPhotoData;
   }else if(currentPhotoPath){
     entry.photoUrl=buildPhotoUrl(entry);
   }
@@ -516,7 +515,7 @@ function finalizeSave(entry,isEdit,id){
   else birds.unshift(entry);
   save();closeOverlay();render();
   // GitHub Pages no tiene servidor: lo guardado aqui solo vive en este navegador.
-  alert('✅ Guardado como vista previa en este navegador.\n\nPara que esta ave quede publicada de forma permanente en la guía, cuéntaselo a Claude en el chat (sube la foto y los datos ahí).');
+  alert('✅ Guardado como vista previa en este navegador.\n\nPara publicarlo permanentemente: usa el botón ⬇ Exportar cambios y sube el JSON a GitHub.');
 }
 
 function deleteEntry(){
