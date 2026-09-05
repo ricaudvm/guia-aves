@@ -1220,5 +1220,18 @@
     "lng": -100.450392,
     "notes": "",
     "photoPath": "/Users/MauricioRicaud/Desktop/aves/Colibri corona violeta, Violet-crowned Hummingbird (Ramosomyia violiceps) (1).jpeg"
+  },
+  {
+    "id": "1788614806187",
+    "nameEs": "Colibrí picoancho",
+    "nameEn": "Broad-billed Hummingbird",
+    "nameSci": "Cynanthus latirostris",
+    "family": "Trochilidae",
+    "date": "2026-07-18",
+    "place": "Juriquilla, Querétaro, México",
+    "lat": 20.707406,
+    "lng": -100.450392,
+    "notes": "",
+    "photoPath": "aves/Colibrí pico ancho, Broad-billed Hummingbird (Cynanthus latirostris).jpg"
   }
 ]
