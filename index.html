@@ -154,6 +154,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
     <select class="filter-select" id="fam-filter" onchange="render()"><option value="">Todas las familias</option></select>
     <button class="btn-add" onclick="openAddModal()">+ Agregar ave</button>
     <button class="btn-add" onclick="exportChanges()">⬇ Exportar cambios</button>
+    <button class="btn-ghost" onclick="importData()">⬆ Importar JSON</button>
+    <input type="file" id="import-input" accept=".json" style="display:none" onchange="handleImport(event)">
   </div>
 </nav>
 
@@ -249,6 +251,28 @@ function exportChanges(){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   alert('Se descargó aves_album.json. Muévelo a la carpeta del proyecto (reemplazando el actual) y corre ./publicar.sh en Terminal.');
+}
+
+function importData(){
+  document.getElementById('import-input').click();
+}
+function handleImport(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(!Array.isArray(data))throw new Error('Formato incorrecto');
+      birds=data.map(b=>({...b,photoUrl:buildPhotoUrl(b)}));
+      save();render();updateStats();
+      alert('✅ Guía importada con '+birds.length+' aves.');
+    }catch(err){
+      alert('Error al importar: el archivo no es un JSON válido.');
+    }
+    e.target.value='';
+  };
+  reader.readAsText(file);
 }
 
 // ── RENDER ────────────────────────────────────────
