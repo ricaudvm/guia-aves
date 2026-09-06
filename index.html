@@ -154,8 +154,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
     <select class="filter-select" id="fam-filter" onchange="render()"><option value="">Todas las familias</option></select>
     <button class="btn-add" onclick="openAddModal()">+ Agregar ave</button>
     <button class="btn-add" onclick="exportChanges()">⬇ Exportar cambios</button>
-    <button class="btn-ghost" onclick="importData()">⬆ Importar JSON</button>
-    <input type="file" id="import-input" accept=".json" style="display:none" onchange="handleImport(event)">
   </div>
 </nav>
 
@@ -228,6 +226,13 @@ function save(){
     const toStore=birds.map(b=>{const{photoUrl,...rest}=b;return rest});
     localStorage.setItem(STORE_KEY,JSON.stringify(toStore));
   }catch(e){}
+  // Also save to JSON file
+  const toStore=birds.map(b=>{const{photoUrl,...rest}=b;return rest});
+  fetch('/Desktop/aves_album.json',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(toStore,null,2)
+  }).catch(()=>{});
 }
 
 // ── EXPORTAR ──────────────────────────────────────
@@ -244,28 +249,6 @@ function exportChanges(){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   alert('Se descargó aves_album.json. Muévelo a la carpeta del proyecto (reemplazando el actual) y corre ./publicar.sh en Terminal.');
-}
-
-function importData(){
-  document.getElementById('import-input').click();
-}
-function handleImport(e){
-  const file=e.target.files[0];
-  if(!file)return;
-  const reader=new FileReader();
-  reader.onload=function(ev){
-    try{
-      const data=JSON.parse(ev.target.result);
-      if(!Array.isArray(data))throw new Error('Formato incorrecto');
-      birds=data.map(b=>({...b,photoUrl:buildPhotoUrl(b)}));
-      save();render();updateStats();
-      alert('✅ Guía importada con '+birds.length+' aves.');
-    }catch(err){
-      alert('Error al importar: el archivo no es un JSON válido.');
-    }
-    e.target.value='';
-  };
-  reader.readAsText(file);
 }
 
 // ── RENDER ────────────────────────────────────────
@@ -608,9 +591,9 @@ function renderMap(){
     let popup;
     if(group.length===1){
       const b=group[0];
-      popup=`<strong>${esc(b.nameEs||b.nameSci)}</strong><br><em style="font-size:11px">${esc(b.nameSci)}</em><br><span style="font-size:11px">${esc(b.place||'')}</span>`;
+      popup=`<strong>${esc(b.nameEs||b.nameSci)}</strong><br><em style="font-size:11px">${esc(b.nameSci)}</em><br><span style="font-size:11px">${esc(b.place||'')}</span><br><span style="font-size:11px">${fmtDate(b.date)}</span>`;
     }else{
-      popup=`<strong>${group.length} aves en este punto</strong><br>`+group.map(b=>`<span style="font-size:11px">${esc(b.nameEs||b.nameSci)} — ${esc(b.date||'')}</span>`).join('<br>');
+      popup=`<strong>${group.length} aves en este punto</strong><br><span style="font-size:11px;color:#6B6860">${esc(group[0].place||'')}</span><br>`+group.map(b=>`<span style="font-size:11px">${esc(b.nameEs||b.nameSci)} — ${fmtDate(b.date)}</span>`).join('<br>');
     }
     L.marker([lat,lng]).addTo(leafMap).bindPopup(popup);
     bounds.push([lat,lng]);
